@@ -316,14 +316,97 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 
 ---
 
+## CRITICAL: Post-Milestone Checklist
+
+**STOP after completing each milestone and perform these steps IN ORDER:**
+
+1. ✅ Run all tests and confirm they pass
+2. ✅ Update "Milestone Phases" section below with completion status
+3. ✅ Update "Implementation Decisions Made" section if any decisions were made
+4. ✅ Pause for user review
+5. ✅ Create git commit with specific message (after user approval)
+6. ✅ Only then proceed to the next milestone
+
+**DO NOT skip these steps. DO NOT proceed to the next milestone without committing.**
+
+---
+
 ## Implementation Decisions Made
 
 (Updated continuously as decisions are finalized.)
+
+1. **Immutable data structures**: All model classes (Piece, Color, Square, Board, GameState, CastlingRights, Move) are frozen dataclasses for thread safety and predictability.
+2. **Tuple storage with list API**: GameState stores move_history internally as tuple (immutable) but exposes it as list via property (for test compatibility and usability).
+3. **Pseudo-legal move generation**: MoveGenerator produces moves that may leave king in check; full legality checking is deferred to validator module.
+4. **SAN letter for pawns**: Empty string ("") since pawns don't use a piece letter prefix in SAN notation.
 
 ---
 
 ## Milestone Phases
 
-(Updated as milestones are completed.)
+### Milestone 1: Project Setup & Core Data Model
+**Status:** ✅ COMPLETE (154 tests passing)
+
+- [x] Create `pyproject.toml` with dependencies (`blessed`, `pytest`)
+- [x] Create `.gitignore`
+- [x] `Piece` enum (KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN) with SAN letters and Unicode symbols
+- [x] `Color` enum (WHITE, BLACK) with `opposite()` method
+- [x] `Square` dataclass with file/rank validation, algebraic notation parsing
+- [x] `Board` class with initial position setup, immutable operations
+- [x] `GameState` dataclass (board, turn, castling rights, en passant, clocks, move history)
+- [x] `CastlingRights` dataclass with revoke methods
+
+**Files created:**
+- `pyproject.toml`, `.gitignore`
+- `src/pychess/__init__.py`, `src/pychess/main.py`
+- `src/pychess/model/__init__.py`, `piece.py`, `square.py`, `board.py`, `game_state.py`
+- `tests/__init__.py`, `tests/model/__init__.py`
+- `tests/model/test_piece.py` (41 tests)
+- `tests/model/test_square.py` (43 tests)
+- `tests/model/test_board.py` (38 tests)
+- `tests/model/test_game_state.py` (32 tests)
+
+---
+
+### Milestone 2: Basic Move Representation & Generation
+**Status:** ✅ COMPLETE (227 tests passing)
+
+- [x] `Move` dataclass (from_square, to_square, promotion, is_castling, is_en_passant, is_capture)
+- [x] Pawn move generation (single/double push, captures, en passant, promotion)
+- [x] Knight move generation (L-shape jumps)
+- [x] Bishop move generation (diagonal sliding)
+- [x] Rook move generation (orthogonal sliding)
+- [x] Queen move generation (bishop + rook combined)
+- [x] King move generation (single step + castling candidates)
+
+**Files created:**
+- `src/pychess/rules/__init__.py`, `move.py`, `move_generator.py`
+- `tests/rules/__init__.py`, `test_move.py` (24 tests), `test_move_generator.py` (49 tests)
+- `tests/conftest.py` (shared fixtures)
+
+---
+
+### Milestone 3: Move Validation & Check Detection
+**Status:** ⏳ PENDING
+
+---
+
+### Milestone 4: Game End Conditions
+**Status:** ⏳ PENDING
+
+---
+
+### Milestone 5: SAN Notation
+**Status:** ⏳ PENDING
+
+---
+
+### Milestone 6: PGN Persistence
+**Status:** ⏳ PENDING
+
+---
+
+### Milestone 7-14: UI, AI, Integration
+**Status:** ⏳ PENDING
 
 ---
