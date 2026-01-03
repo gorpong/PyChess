@@ -389,24 +389,342 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ### Milestone 3: Move Validation & Check Detection
 **Status:** ⏳ PENDING
 
+**Goal:** Filter pseudo-legal moves to only legal moves; detect check.
+
+**Tasks:**
+- [ ] Create `src/pychess/rules/validator.py`
+- [ ] Implement `is_square_attacked(board, square, by_color)` - checks if any piece of `by_color` attacks the square
+- [ ] Implement `is_in_check(board, color)` - checks if the king of `color` is in check
+- [ ] Implement `is_move_legal(game_state, move)` - validates move doesn't leave own king in check
+- [ ] Implement `get_legal_moves(game_state)` - returns all legal moves for current player
+- [ ] Add castling validation: king cannot castle out of, through, or into check
+- [ ] Add en passant validation: cannot expose king to check
+- [ ] Create `tests/rules/test_validator.py` with comprehensive tests
+
+**Test cases must include:**
+- Basic check detection (single attacker)
+- Multiple attackers (double check)
+- Pinned pieces cannot move (or can only move along pin line)
+- King cannot move into check
+- Blocking check with piece
+- Capturing attacking piece
+- Castling blocked by check/attack on traversal squares
+- En passant discovered check edge case
+
+**Files to create:**
+- `src/pychess/rules/validator.py`
+- `tests/rules/test_validator.py`
+
 ---
 
 ### Milestone 4: Game End Conditions
 **Status:** ⏳ PENDING
+
+**Goal:** Detect checkmate, stalemate, and draw conditions.
+
+**Tasks:**
+- [ ] Create `src/pychess/rules/game_logic.py`
+- [ ] Implement `is_checkmate(game_state)` - in check with no legal moves
+- [ ] Implement `is_stalemate(game_state)` - not in check but no legal moves
+- [ ] Implement `is_fifty_move_rule(game_state)` - halfmove_clock >= 100
+- [ ] Implement `is_threefold_repetition(game_state)` - requires position hashing
+- [ ] Implement `is_insufficient_material(board)` - K vs K, K+B vs K, K+N vs K, K+B vs K+B (same color bishops)
+- [ ] Implement `get_game_result(game_state)` - returns "1-0", "0-1", "1/2-1/2", or None (ongoing)
+- [ ] Add position hash to GameState for repetition detection
+- [ ] Create `tests/rules/test_game_logic.py`
+
+**Test cases must include:**
+- Fool's mate (fastest checkmate)
+- Scholar's mate
+- Back rank mate
+- Smothered mate
+- Stalemate positions
+- Fifty-move rule trigger
+- Threefold repetition
+- All insufficient material combinations
+
+**Files to create:**
+- `src/pychess/rules/game_logic.py`
+- `tests/rules/test_game_logic.py`
 
 ---
 
 ### Milestone 5: SAN Notation
 **Status:** ⏳ PENDING
 
+**Goal:** Parse and generate Standard Algebraic Notation for moves.
+
+**Tasks:**
+- [ ] Create `src/pychess/notation/san.py`
+- [ ] Implement `move_to_san(game_state, move)` - generates SAN string from Move
+- [ ] Implement `san_to_move(game_state, san_string)` - parses SAN string to Move
+- [ ] Handle piece letters: K, Q, R, B, N (pawn has no letter)
+- [ ] Handle captures: 'x' notation
+- [ ] Handle disambiguation: file, rank, or both when multiple pieces can reach same square
+- [ ] Handle check '+' and checkmate '#' suffixes
+- [ ] Handle castling: O-O (kingside), O-O-O (queenside)
+- [ ] Handle promotion: =Q, =R, =B, =N
+- [ ] Handle en passant (standard capture notation, target square)
+- [ ] Create `tests/notation/test_san.py`
+
+**Test cases must include:**
+- Simple pawn moves: e4, d5
+- Pawn captures: exd5
+- Piece moves: Nf3, Bb5
+- Piece captures: Bxc6
+- Disambiguation by file: Rad1, Rfd1
+- Disambiguation by rank: R1d2, R8d2
+- Disambiguation by both: Qh4e1
+- Castling both sides
+- Promotion: e8=Q
+- Promotion with capture: exd8=N
+- Check notation: Bb5+
+- Checkmate notation: Qxf7#
+
+**Files to create:**
+- `src/pychess/notation/__init__.py`
+- `src/pychess/notation/san.py`
+- `tests/notation/__init__.py`
+- `tests/notation/test_san.py`
+
 ---
 
 ### Milestone 6: PGN Persistence
 **Status:** ⏳ PENDING
 
+**Goal:** Save and load games in PGN format.
+
+**Tasks:**
+- [ ] Create `src/pychess/notation/pgn.py`
+- [ ] Implement PGN header serialization with required tags:
+  - Event, Site, Date, White, Black, Result, TimeControl, TotalTimeSeconds
+- [ ] Implement PGN move text serialization (move pairs with numbers)
+- [ ] Implement PGN comment serialization using `{}` notation
+- [ ] Implement PGN parsing (headers + moves)
+- [ ] Implement `game_to_pgn(game_state, headers)` - serialize to PGN string
+- [ ] Implement `pgn_to_game(pgn_string)` - parse PGN and replay moves to restore state
+- [ ] Create `src/pychess/persistence/save_manager.py`
+- [ ] Implement 10-game storage limit with eviction policy (oldest completed first)
+- [ ] Implement game listing for CLI
+- [ ] Implement game loading by name
+- [ ] Create `tests/notation/test_pgn.py`
+- [ ] Create `tests/persistence/test_save_manager.py`
+
+**PGN Format Example:**
+```
+[Event "Casual Game"]
+[Site "Terminal"]
+[Date "2024.01.15"]
+[White "Player1"]
+[Black "Computer"]
+[Result "1-0"]
+[TimeControl "-"]
+[TotalTimeSeconds "342"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 {Spanish Game} a6 4. Ba4 Nf6 1-0
+```
+
+**Files to create:**
+- `src/pychess/notation/pgn.py`
+- `src/pychess/persistence/__init__.py`
+- `src/pychess/persistence/save_manager.py`
+- `tests/notation/test_pgn.py`
+- `tests/persistence/__init__.py`
+- `tests/persistence/test_save_manager.py`
+
 ---
 
-### Milestone 7-14: UI, AI, Integration
+### Milestone 7: Basic Terminal UI
 **Status:** ⏳ PENDING
+
+**Goal:** Render board and accept SAN input using `blessed` library.
+
+**Tasks:**
+- [ ] Create `src/pychess/ui/renderer.py` - abstract renderer interface
+- [ ] Create `src/pychess/ui/terminal.py` - blessed-based implementation
+- [ ] Create `src/pychess/ui/board_view.py` - board drawing logic
+- [ ] Implement terminal size detection (100x44 minimum)
+- [ ] Implement board rendering with rank/file labels
+- [ ] Implement piece rendering (Unicode glyphs with ASCII fallback)
+- [ ] Implement light/dark square background colors
+- [ ] Implement status message area (last 3-5 messages)
+- [ ] Implement SAN text input field
+- [ ] Create basic game loop (alternating turns)
+- [ ] Center board for larger terminals
+
+**Files to create:**
+- `src/pychess/ui/__init__.py`
+- `src/pychess/ui/renderer.py`
+- `src/pychess/ui/terminal.py`
+- `src/pychess/ui/board_view.py`
+
+---
+
+### Milestone 8: Cursor & Selection System
+**Status:** ⏳ PENDING
+
+**Goal:** Arrow key navigation and Enter-based piece selection.
+
+**Tasks:**
+- [ ] Create `src/pychess/ui/cursor.py` - cursor state management
+- [ ] Create `src/pychess/ui/input_handler.py` - keyboard input processing
+- [ ] Implement cursor rendering (highlight current square)
+- [ ] Implement arrow key movement (wrapping at edges optional)
+- [ ] Implement Enter to select piece (validate own piece)
+- [ ] Implement Enter on destination to attempt move
+- [ ] Implement Enter on source square to cancel selection
+- [ ] Implement Escape to cancel selection
+- [ ] Implement selected piece highlighting (different from cursor)
+- [ ] Implement illegal move error display
+
+**Files to create:**
+- `src/pychess/ui/cursor.py`
+- `src/pychess/ui/input_handler.py`
+
+---
+
+### Milestone 9: Mouse Support
+**Status:** ⏳ PENDING
+
+**Goal:** Click-based piece movement using blessed mouse events.
+
+**Tasks:**
+- [ ] Add mouse event handling to input_handler.py
+- [ ] Implement click-to-select piece
+- [ ] Implement click-on-destination to move
+- [ ] Implement drag-and-drop (click-hold-release)
+- [ ] Share highlighting logic with keyboard mode
+- [ ] Handle mouse position to board square conversion
+
+---
+
+### Milestone 10: Global Commands & UX Polish
+**Status:** ⏳ PENDING
+
+**Goal:** Implement undo, restart, help, quit, and other UX features.
+
+**Tasks:**
+- [ ] Implement undo logic in game state (restore previous state, update move history)
+- [ ] Implement `u` key for undo
+- [ ] Implement `r` key for restart (with confirmation)
+- [ ] Implement `t` key for time display (hh:mm:ss format)
+- [ ] Implement `?` key for help overlay
+- [ ] Create `src/pychess/ui/overlays.py` for help, PGN examples
+- [ ] Implement `q`/`Esc` for quit (with confirmation, save prompt)
+- [ ] Implement `- ` prefix for adding PGN comments to previous move
+- [ ] Implement promotion dialog UI (select Q/R/B/N)
+- [ ] Track total game time
+
+**Files to create:**
+- `src/pychess/ui/overlays.py`
+
+---
+
+### Milestone 11: AI - Easy & Medium
+**Status:** ⏳ PENDING
+
+**Goal:** Single-player against basic AI opponents.
+
+**Tasks:**
+- [ ] Create `src/pychess/ai/__init__.py`
+- [ ] Create `src/pychess/ai/engine.py` - AI interface and difficulty dispatcher
+- [ ] Create `src/pychess/ai/evaluation.py` - shared evaluation functions
+- [ ] Create `src/pychess/ai/easy.py` - random legal move selection
+- [ ] Create `src/pychess/ai/medium.py` - material-based evaluation
+- [ ] Implement seedable randomness for deterministic testing
+- [ ] Integrate AI into game loop
+- [ ] Implement undo vs AI (undo both AI + player moves)
+- [ ] Add game mode selection (multiplayer vs AI + difficulty)
+- [ ] Create `tests/ai/test_easy.py`
+- [ ] Create `tests/ai/test_medium.py`
+
+**Material values (standard):**
+- Pawn: 1
+- Knight: 3
+- Bishop: 3
+- Rook: 5
+- Queen: 9
+- King: 0 (infinite, not captured)
+
+**Files to create:**
+- `src/pychess/ai/__init__.py`
+- `src/pychess/ai/engine.py`
+- `src/pychess/ai/evaluation.py`
+- `src/pychess/ai/easy.py`
+- `src/pychess/ai/medium.py`
+- `tests/ai/__init__.py`
+- `tests/ai/test_easy.py`
+- `tests/ai/test_medium.py`
+
+---
+
+### Milestone 12: AI - Hard
+**Status:** ⏳ PENDING
+
+**Goal:** Positional evaluation for stronger AI play.
+
+**Tasks:**
+- [ ] Create `src/pychess/ai/hard.py`
+- [ ] Implement piece-square tables for positional scoring
+- [ ] Combine material + positional evaluation
+- [ ] Implement move ordering for better play
+- [ ] Implement cancel restriction for Hard+ difficulty
+- [ ] Create `tests/ai/test_hard.py`
+
+**Piece-square table concepts:**
+- Pawns: value center control, advancement
+- Knights: value center squares, penalize edges
+- Bishops: value diagonals, penalize blocked
+- Rooks: value open files, 7th rank
+- Queen: slightly prefer center early
+- King: castle early (corners), centralize in endgame
+
+**Files to create:**
+- `src/pychess/ai/hard.py`
+- `tests/ai/test_hard.py`
+
+---
+
+### Milestone 13: Legal Move Hints & Polish
+**Status:** ⏳ PENDING
+
+**Goal:** TAB highlighting of legal moves and final UX refinements.
+
+**Tasks:**
+- [ ] Implement TAB to show legal moves for selected piece
+- [ ] Enable hints only vs AI (Easy/Medium)
+- [ ] Disable hints in multiplayer mode
+- [ ] Implement multiplayer cancel confirmation
+- [ ] Final UI polish and edge case handling
+- [ ] Ensure all highlighting states render correctly
+
+---
+
+### Milestone 14: Integration & CLI
+**Status:** ⏳ PENDING
+
+**Goal:** Complete application with full CLI interface.
+
+**Tasks:**
+- [ ] Create `src/pychess/controller/__init__.py`
+- [ ] Create `src/pychess/controller/game_controller.py` - main game orchestration
+- [ ] Update `src/pychess/main.py` with CLI argument parsing
+- [ ] Implement `--list-games` to show saved games
+- [ ] Implement `--load <name>` to load a saved game
+- [ ] Implement game mode selection menu
+- [ ] Create end-to-end integration tests
+- [ ] Final documentation and README updates
+
+**CLI interface:**
+```
+pychess                    # Start new game (mode selection menu)
+pychess --list-games       # List saved games
+pychess --load "Game 1"    # Load saved game
+pychess --help             # Show help
+```
+
+**Files to create:**
+- `src/pychess/controller/__init__.py`
+- `src/pychess/controller/game_controller.py`
 
 ---
