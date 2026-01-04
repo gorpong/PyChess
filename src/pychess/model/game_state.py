@@ -80,6 +80,7 @@ class GameState:
     - Half-move clock (for 50-move rule)
     - Full-move number
     - Move history (SAN notation)
+    - Position history (hashes for threefold repetition)
     """
 
     board: Board
@@ -89,11 +90,44 @@ class GameState:
     halfmove_clock: int
     fullmove_number: int
     _move_history: tuple[str, ...] = field(default_factory=tuple)
+    _position_history: tuple[int, ...] = field(default_factory=tuple)
 
     @property
     def move_history(self) -> list[str]:
         """Return move history as a list."""
         return list(self._move_history)
+
+    @property
+    def position_history(self) -> list[int]:
+        """Return position history as a list of hashes."""
+        return list(self._position_history)
+
+    @property
+    def position_hash(self) -> int:
+        """Compute a hash of the current position for repetition detection.
+
+        The hash includes: board position, turn, castling rights, en passant square.
+        It does NOT include: halfmove clock, fullmove number, or move history.
+        """
+        # Build a tuple of all position-relevant state
+        # Board pieces as sorted list of (square, piece, color)
+        pieces = []
+        for square, (piece, color) in sorted(
+            self.board._pieces.items(),
+            key=lambda x: (x[0].file, x[0].rank)
+        ):
+            pieces.append((square.file, square.rank, piece.name, color.name))
+
+        state_tuple = (
+            tuple(pieces),
+            self.turn.name,
+            self.castling.white_kingside,
+            self.castling.white_queenside,
+            self.castling.black_kingside,
+            self.castling.black_queenside,
+            self.en_passant_square.to_algebraic() if self.en_passant_square else None,
+        )
+        return hash(state_tuple)
 
     @classmethod
     def initial(cls) -> GameState:
@@ -133,6 +167,7 @@ class GameState:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=self.fullmove_number,
             _move_history=self._move_history,
+            _position_history=self._position_history,
         )
 
     def with_turn(self, turn: Color) -> GameState:
@@ -145,6 +180,7 @@ class GameState:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=self.fullmove_number,
             _move_history=self._move_history,
+            _position_history=self._position_history,
         )
 
     def with_castling(self, castling: CastlingRights) -> GameState:
@@ -157,6 +193,7 @@ class GameState:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=self.fullmove_number,
             _move_history=self._move_history,
+            _position_history=self._position_history,
         )
 
     def with_en_passant(self, square: Optional[Square]) -> GameState:
@@ -169,6 +206,7 @@ class GameState:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=self.fullmove_number,
             _move_history=self._move_history,
+            _position_history=self._position_history,
         )
 
     def with_halfmove_clock(self, clock: int) -> GameState:
@@ -181,6 +219,7 @@ class GameState:
             halfmove_clock=clock,
             fullmove_number=self.fullmove_number,
             _move_history=self._move_history,
+            _position_history=self._position_history,
         )
 
     def with_fullmove_number(self, number: int) -> GameState:
@@ -193,6 +232,7 @@ class GameState:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=number,
             _move_history=self._move_history,
+            _position_history=self._position_history,
         )
 
     def with_move_added(self, san_move: str) -> GameState:
@@ -205,4 +245,18 @@ class GameState:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=self.fullmove_number,
             _move_history=self._move_history + (san_move,),
+            _position_history=self._position_history,
+        )
+
+    def with_position_hash_added(self, position_hash: int) -> GameState:
+        """Return new state with position hash added to history."""
+        return GameState(
+            board=self.board,
+            turn=self.turn,
+            castling=self.castling,
+            en_passant_square=self.en_passant_square,
+            halfmove_clock=self.halfmove_clock,
+            fullmove_number=self.fullmove_number,
+            _move_history=self._move_history,
+            _position_history=self._position_history + (position_hash,),
         )

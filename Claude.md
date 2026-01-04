@@ -419,34 +419,36 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ---
 
 ### Milestone 4: Game End Conditions
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (308 tests passing)
 
 **Goal:** Detect checkmate, stalemate, and draw conditions.
 
 **Tasks:**
-- [ ] Create `src/pychess/rules/game_logic.py`
-- [ ] Implement `is_checkmate(game_state)` - in check with no legal moves
-- [ ] Implement `is_stalemate(game_state)` - not in check but no legal moves
-- [ ] Implement `is_fifty_move_rule(game_state)` - halfmove_clock >= 100
-- [ ] Implement `is_threefold_repetition(game_state)` - requires position hashing
-- [ ] Implement `is_insufficient_material(board)` - K vs K, K+B vs K, K+N vs K, K+B vs K+B (same color bishops)
-- [ ] Implement `get_game_result(game_state)` - returns "1-0", "0-1", "1/2-1/2", or None (ongoing)
-- [ ] Add position hash to GameState for repetition detection
-- [ ] Create `tests/rules/test_game_logic.py`
+- [x] Create `src/pychess/rules/game_logic.py`
+- [x] Implement `is_checkmate(game_state)` - in check with no legal moves
+- [x] Implement `is_stalemate(game_state)` - not in check but no legal moves
+- [x] Implement `is_fifty_move_rule(game_state)` - halfmove_clock >= 100
+- [x] Implement `is_threefold_repetition(game_state)` - requires position hashing
+- [x] Implement `is_insufficient_material(board)` - K vs K, K+B vs K, K+N vs K, K+B vs K+B (same color bishops)
+- [x] Implement `get_game_result(game_state)` - returns "1-0", "0-1", "1/2-1/2", or None (ongoing)
+- [x] Add position hash to GameState for repetition detection
+- [x] Create `tests/rules/test_game_logic.py` (43 tests)
 
-**Test cases must include:**
+**Test cases include:**
 - Fool's mate (fastest checkmate)
 - Scholar's mate
 - Back rank mate
 - Smothered mate
-- Stalemate positions
+- Stalemate positions (basic, king in corner, with blocked pawn)
 - Fifty-move rule trigger
 - Threefold repetition
 - All insufficient material combinations
 
-**Files to create:**
+**Files created:**
 - `src/pychess/rules/game_logic.py`
-- `tests/rules/test_game_logic.py`
+- `tests/rules/test_game_logic.py` (43 tests)
+- Updated `src/pychess/model/game_state.py` with position_hash and position_history
+- Updated `src/pychess/rules/__init__.py` to export game_logic functions
 
 ---
 
