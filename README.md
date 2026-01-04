@@ -10,7 +10,11 @@ A fully-featured, beautiful terminal-based chess game written in Python. Play ch
 - ♟️ **Full Chess Rules** - Complete implementation of official FIDE rules
 - 📝 **Standard Algebraic Notation (SAN)** - Industry-standard move notation
 - 💾 **PGN Support** - Save and load games in Portable Game Notation format
-- 🎮 **Two-Player Mode** - Play against a friend locally
+- 🎮 **Multiple Game Modes** - Play multiplayer or against AI
+- 🤖 **AI Opponents** - Three difficulty levels (Easy, Medium, Hard)
+- 🎯 **Dual Input Modes** - Cursor navigation or SAN text input
+- 🔄 **Undo/Redo** - Full move history with unlimited undo
+- ❓ **Help System** - Comprehensive in-game help overlay
 - 🏁 **Complete Game Logic** - Checkmate, stalemate, draws, en passant, castling, promotion
 - 📊 **Move History** - Track all moves in SAN notation
 - ⚡ **Fast & Responsive** - Lightweight and instant feedback
@@ -40,13 +44,19 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```bash
-# Start a new game
+# Start a new game (shows game mode selection menu)
 pychess
 
 # Future commands (coming soon)
 pychess --list-games       # List saved games
 pychess --load "Game 1"    # Load a saved game
 ```
+
+When you start the game, you'll see a menu:
+1. **Multiplayer** - Two players on the same computer
+2. **vs AI - Easy** - Random moves
+3. **vs AI - Medium** - Material-based strategy
+4. **vs AI - Hard** - Material + positional play
 
 ## How to Play
 
@@ -131,14 +141,28 @@ The game automatically adds check and checkmate symbols:
 - `Qh5+` - Queen to h5, giving check
 - `Qxf7#` - Queen captures f7, checkmate
 
-## Game Commands
+## Game Controls
 
-While playing, you can use these commands:
+### Cursor Mode (Default)
+
+Use arrow keys to navigate:
+- **Arrow Keys** - Move cursor around the board
+- **Enter** - Select piece / Make move
+- **Escape** - Cancel selection
+- **/** - Switch to SAN input mode
+
+### SAN Input Mode
+
+Type moves directly:
+- Type moves like `e4`, `Nf3`, `Bxc6`
+- **/** - Switch back to cursor mode
+
+### Global Commands (Both Modes)
 
 - **q** - Quit the game (with confirmation)
 - **r** - Restart the game
-- **u** - Undo the last move (coming soon)
-- **?** - Show help
+- **u** - Undo the last move
+- **?** - Show help overlay
 
 ## Example Game
 
@@ -226,10 +250,14 @@ After **1. e4 e5**, common continuations:
 - [x] SAN notation support
 - [x] PGN import/export
 - [x] Basic terminal UI
-- [ ] Cursor and mouse controls (Milestone 8)
-- [ ] AI opponents (Easy, Medium, Hard)
+- [x] Cursor controls with visual feedback
+- [x] Dual input modes (cursor + SAN)
+- [x] AI opponents (Easy, Medium, Hard)
+- [x] Undo/redo functionality
+- [x] Help overlay system
+- [x] Game mode selection menu
+- [ ] Mouse support
 - [ ] Save/load game functionality
-- [ ] Move hints and highlights
 - [ ] Time controls
 - [ ] Advanced features (opening book, analysis)
 
@@ -260,6 +288,8 @@ pytest tests/model/test_board.py
 ```
 
 Currently: **369 tests passing** ✅
+
+**Development Status:** 10/14 milestones complete (71%)
 
 ## Troubleshooting
 
