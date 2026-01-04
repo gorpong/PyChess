@@ -43,6 +43,7 @@ def run_game(renderer: TerminalRenderer) -> None:
     game_state = GameState.initial()
     cursor_state = CursorState.initial()
     input_handler = InputHandler()
+    input_mode = "cursor"  # "cursor" or "san"
     status_messages = ["Welcome to PyChess!", "Use arrow keys to move cursor, Enter to select"]
 
     while True:
@@ -81,90 +82,151 @@ def run_game(renderer: TerminalRenderer) -> None:
         )
 
         # Update input prompt
-        renderer._render_input(mode="cursor")
+        renderer._render_input(mode=input_mode)
 
-        # Get key input
-        key = renderer.get_key_input()
-        event = input_handler.process_key(key)
+        # Handle input based on mode
+        if input_mode == "san":
+            # SAN input mode
+            user_input = renderer.get_input().strip()
 
-        # Handle input events
-        if event.input_type == InputType.MOVE_UP:
-            cursor_state = cursor_state.move_up()
+            # Handle empty input
+            if not user_input:
+                continue
 
-        elif event.input_type == InputType.MOVE_DOWN:
-            cursor_state = cursor_state.move_down()
+            # Check for mode toggle
+            if user_input == '/':
+                input_mode = "cursor"
+                status_messages = ["Switched to cursor mode"]
+                continue
 
-        elif event.input_type == InputType.MOVE_LEFT:
-            cursor_state = cursor_state.move_left()
+            # Handle commands
+            if user_input.lower() == 'q':
+                print(renderer.term.home() + renderer.term.clear())
+                confirm = input("Are you sure you want to quit? (y/n): ")
+                if confirm.lower() == 'y':
+                    break
+                continue
 
-        elif event.input_type == InputType.MOVE_RIGHT:
-            cursor_state = cursor_state.move_right()
+            if user_input.lower() == 'r':
+                game_state = GameState.initial()
+                cursor_state = CursorState.initial()
+                status_messages = ["Game restarted!"]
+                continue
 
-        elif event.input_type == InputType.SELECT:
-            # Try to make a move or select a piece
-            move_attempt = cursor_state.attempt_move()
+            if user_input.lower() == '?':
+                renderer.show_message("Enter moves in SAN notation (e.g., e4, Nf3)")
+                renderer.show_message("Press / to switch to cursor mode")
+                continue
 
-            if move_attempt:
-                from_square, to_square = move_attempt
+            # Try to parse as SAN move
+            try:
+                move = san_to_move(game_state, user_input)
 
-                # Find matching legal move
-                legal_moves = get_legal_moves(game_state)
-                matching_move = None
+                # Verify move is legal
+                if not is_move_legal(game_state, move):
+                    renderer.show_error(f"Illegal move: {user_input}")
+                    continue
 
-                for move in legal_moves:
-                    if move.from_square == from_square and move.to_square == to_square:
-                        matching_move = move
-                        break
+                # Apply the move
+                from pychess.notation.pgn import _apply_san_move
+                san_notation = move_to_san(game_state, move)
+                game_state = _apply_san_move(game_state, san_notation, move)
 
-                if matching_move:
-                    # Valid move - apply it
-                    from pychess.notation.pgn import _apply_san_move
-                    san_notation = move_to_san(game_state, matching_move)
-                    game_state = _apply_san_move(game_state, san_notation, matching_move)
-                    cursor_state = cursor_state.clear_selection()
-                    status_messages = [f"Move: {san_notation}"]
-                else:
-                    # Invalid move
-                    renderer.show_error("Illegal move")
-                    cursor_state = cursor_state.clear_selection()
-            else:
-                # Select piece at cursor
-                piece_info = game_state.board.get(cursor_state.position)
+                status_messages = [f"Move: {san_notation}"]
 
-                if piece_info:
-                    piece_type, piece_color = piece_info
-                    # Check if it's the current player's piece
-                    if piece_color == game_state.active_color:
-                        cursor_state = cursor_state.select_square()
-                        status_messages = [f"Selected {piece_color.name} {piece_type.name}"]
+            except ValueError:
+                renderer.show_error(f"Invalid move: {user_input}")
+                continue
+
+        else:
+            # Cursor mode
+            # Get key input
+            key = renderer.get_key_input()
+            event = input_handler.process_key(key)
+
+            # Handle input events
+            if event.input_type == InputType.MOVE_UP:
+                cursor_state = cursor_state.move_up()
+
+            elif event.input_type == InputType.MOVE_DOWN:
+                cursor_state = cursor_state.move_down()
+
+            elif event.input_type == InputType.MOVE_LEFT:
+                cursor_state = cursor_state.move_left()
+
+            elif event.input_type == InputType.MOVE_RIGHT:
+                cursor_state = cursor_state.move_right()
+
+            elif event.input_type == InputType.SELECT:
+                # Try to make a move or select a piece
+                move_attempt = cursor_state.attempt_move()
+
+                if move_attempt:
+                    from_square, to_square = move_attempt
+
+                    # Find matching legal move
+                    legal_moves = get_legal_moves(game_state)
+                    matching_move = None
+
+                    for move in legal_moves:
+                        if move.from_square == from_square and move.to_square == to_square:
+                            matching_move = move
+                            break
+
+                    if matching_move:
+                        # Valid move - apply it
+                        from pychess.notation.pgn import _apply_san_move
+                        san_notation = move_to_san(game_state, matching_move)
+                        game_state = _apply_san_move(game_state, san_notation, matching_move)
+                        cursor_state = cursor_state.clear_selection()
+                        status_messages = [f"Move: {san_notation}"]
                     else:
-                        renderer.show_error("Not your piece!")
+                        # Invalid move
+                        renderer.show_error("Illegal move")
+                        cursor_state = cursor_state.clear_selection()
                 else:
-                    # Empty square - deselect
-                    cursor_state = cursor_state.clear_selection()
+                    # Select piece at cursor
+                    piece_info = game_state.board.get(cursor_state.position)
 
-        elif event.input_type == InputType.CANCEL:
-            cursor_state = cursor_state.cancel_selection()
-            status_messages = ["Selection cancelled"]
+                    if piece_info:
+                        piece_type, piece_color = piece_info
+                        # Check if it's the current player's piece
+                        if piece_color == game_state.active_color:
+                            cursor_state = cursor_state.select_square()
+                            status_messages = [f"Selected {piece_color.name} {piece_type.name}"]
+                        else:
+                            renderer.show_error("Not your piece!")
+                    else:
+                        # Empty square - deselect
+                        cursor_state = cursor_state.clear_selection()
 
-        elif event.input_type == InputType.QUIT:
-            # Clear screen for confirmation prompt
-            print(renderer.term.home() + renderer.term.clear())
-            confirm = input("Are you sure you want to quit? (y/n): ")
-            if confirm.lower() == 'y':
-                break
+            elif event.input_type == InputType.CANCEL:
+                cursor_state = cursor_state.cancel_selection()
+                status_messages = ["Selection cancelled"]
 
-        elif event.input_type == InputType.UNDO:
-            renderer.show_message("Undo not yet implemented")
+            elif event.input_type == InputType.QUIT:
+                # Clear screen for confirmation prompt
+                print(renderer.term.home() + renderer.term.clear())
+                confirm = input("Are you sure you want to quit? (y/n): ")
+                if confirm.lower() == 'y':
+                    break
 
-        elif event.input_type == InputType.RESTART:
-            game_state = GameState.initial()
-            cursor_state = CursorState.initial()
-            status_messages = ["Game restarted!"]
+            elif event.input_type == InputType.UNDO:
+                renderer.show_message("Undo not yet implemented")
 
-        elif event.input_type == InputType.HELP:
-            renderer.show_message("Arrow keys=move cursor, Enter=select/move")
-            renderer.show_message("q=quit, r=restart, Esc=cancel selection")
+            elif event.input_type == InputType.RESTART:
+                game_state = GameState.initial()
+                cursor_state = CursorState.initial()
+                status_messages = ["Game restarted!"]
+
+            elif event.input_type == InputType.HELP:
+                renderer.show_message("Arrow keys=move cursor, Enter=select/move")
+                renderer.show_message("q=quit, r=restart, Esc=cancel, /=SAN mode")
+
+            elif event.input_type == InputType.TOGGLE_MODE:
+                input_mode = "san"
+                cursor_state = cursor_state.clear_selection()
+                status_messages = ["Switched to SAN input mode - type moves like 'e4'"]
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ class InputType(Enum):
     UNDO = auto()
     RESTART = auto()
     HELP = auto()
+    TOGGLE_MODE = auto()  # Switch between cursor and SAN mode
     SAN_INPUT = auto()  # Text input for SAN notation
     UNKNOWN = auto()
 
@@ -73,6 +74,8 @@ class InputHandler:
             return InputEvent(InputType.RESTART)
         elif char == '?':
             return InputEvent(InputType.HELP)
+        elif char == '/':
+            return InputEvent(InputType.TOGGLE_MODE)
 
         # Unknown key
         return InputEvent(InputType.UNKNOWN)
