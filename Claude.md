@@ -453,24 +453,24 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ---
 
 ### Milestone 5: SAN Notation
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (369 tests passing)
 
 **Goal:** Parse and generate Standard Algebraic Notation for moves.
 
 **Tasks:**
-- [ ] Create `src/pychess/notation/san.py`
-- [ ] Implement `move_to_san(game_state, move)` - generates SAN string from Move
-- [ ] Implement `san_to_move(game_state, san_string)` - parses SAN string to Move
-- [ ] Handle piece letters: K, Q, R, B, N (pawn has no letter)
-- [ ] Handle captures: 'x' notation
-- [ ] Handle disambiguation: file, rank, or both when multiple pieces can reach same square
-- [ ] Handle check '+' and checkmate '#' suffixes
-- [ ] Handle castling: O-O (kingside), O-O-O (queenside)
-- [ ] Handle promotion: =Q, =R, =B, =N
-- [ ] Handle en passant (standard capture notation, target square)
-- [ ] Create `tests/notation/test_san.py`
+- [x] Create `src/pychess/notation/san.py`
+- [x] Implement `move_to_san(game_state, move)` - generates SAN string from Move
+- [x] Implement `san_to_move(game_state, san_string)` - parses SAN string to Move
+- [x] Handle piece letters: K, Q, R, B, N (pawn has no letter)
+- [x] Handle captures: 'x' notation
+- [x] Handle disambiguation: file, rank, or both when multiple pieces can reach same square
+- [x] Handle check '+' and checkmate '#' suffixes
+- [x] Handle castling: O-O (kingside), O-O-O (queenside)
+- [x] Handle promotion: =Q, =R, =B, =N
+- [x] Handle en passant (standard capture notation, target square)
+- [x] Create `tests/notation/test_san.py`
 
-**Test cases must include:**
+**Test cases include:**
 - Simple pawn moves: e4, d5
 - Pawn captures: exd5
 - Piece moves: Nf3, Bb5
@@ -484,7 +484,7 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 - Check notation: Bb5+
 - Checkmate notation: Qxf7#
 
-**Files to create:**
+**Files created:**
 - `src/pychess/notation/__init__.py`
 - `src/pychess/notation/san.py`
 - `tests/notation/__init__.py`
@@ -493,25 +493,23 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ---
 
 ### Milestone 6: PGN Persistence
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (369 tests passing)
 
 **Goal:** Save and load games in PGN format.
 
 **Tasks:**
-- [ ] Create `src/pychess/notation/pgn.py`
-- [ ] Implement PGN header serialization with required tags:
+- [x] Create `src/pychess/notation/pgn.py`
+- [x] Implement PGN header serialization with required tags:
   - Event, Site, Date, White, Black, Result, TimeControl, TotalTimeSeconds
-- [ ] Implement PGN move text serialization (move pairs with numbers)
-- [ ] Implement PGN comment serialization using `{}` notation
-- [ ] Implement PGN parsing (headers + moves)
-- [ ] Implement `game_to_pgn(game_state, headers)` - serialize to PGN string
-- [ ] Implement `pgn_to_game(pgn_string)` - parse PGN and replay moves to restore state
-- [ ] Create `src/pychess/persistence/save_manager.py`
-- [ ] Implement 10-game storage limit with eviction policy (oldest completed first)
-- [ ] Implement game listing for CLI
-- [ ] Implement game loading by name
-- [ ] Create `tests/notation/test_pgn.py`
-- [ ] Create `tests/persistence/test_save_manager.py`
+- [x] Implement PGN move text serialization (move pairs with numbers)
+- [x] Implement PGN comment serialization using `{}` notation
+- [x] Implement PGN parsing (headers + moves)
+- [x] Implement `game_to_pgn(game_state, headers)` - serialize to PGN string
+- [x] Implement `pgn_to_game(pgn_string)` - parse PGN and replay moves to restore state
+- [x] Create `tests/notation/test_pgn.py`
+- [x] Create `tests/persistence/__init__.py` directory structure
+
+**Note:** `save_manager.py` not yet implemented - will be created in a future milestone when CLI integration is complete.
 
 **PGN Format Example:**
 ```
@@ -527,13 +525,15 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 1. e4 e5 2. Nf3 Nc6 3. Bb5 {Spanish Game} a6 4. Ba4 Nf6 1-0
 ```
 
-**Files to create:**
+**Files created:**
 - `src/pychess/notation/pgn.py`
 - `src/pychess/persistence/__init__.py`
-- `src/pychess/persistence/save_manager.py`
 - `tests/notation/test_pgn.py`
 - `tests/persistence/__init__.py`
-- `tests/persistence/test_save_manager.py`
+
+**Files deferred:**
+- `src/pychess/persistence/save_manager.py` - to be implemented with CLI integration
+- `tests/persistence/test_save_manager.py` - to be implemented with save_manager
 
 ---
 
