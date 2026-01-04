@@ -10,6 +10,7 @@ from typing import Optional
 from blessed import Terminal
 
 from pychess.model.game_state import GameState
+from pychess.model.piece import Color
 from pychess.model.square import Square
 from pychess.ui.renderer import Renderer
 from pychess.ui.board_view import BoardView
@@ -210,11 +211,30 @@ class TerminalRenderer(Renderer):
 
                     # Place piece symbol in the middle line
                     if line == 1 and piece_info:
-                        piece_type, color = piece_info
-                        symbol = self.board_view.get_piece_symbol(piece_type, color)
+                        piece_type, piece_color = piece_info
+                        symbol = self.board_view.get_piece_symbol(piece_type, piece_color)
+
+                        # Color the piece text (white pieces = bright, black pieces = dark)
+                        if piece_color == Color.WHITE:
+                            piece_text = self._safe_format(symbol, self.term.white)
+                        else:
+                            piece_text = self._safe_format(symbol, self.term.black)
+
                         # Center the piece in the square
                         padding = (self.SQUARE_WIDTH - 1) // 2
-                        content = " " * padding + symbol + " " * (self.SQUARE_WIDTH - padding - 1)
+                        # We need to handle the colored text specially with background
+                        left_pad = " " * padding
+                        right_pad = " " * (self.SQUARE_WIDTH - padding - 1)
+
+                        # Print with background and piece color
+                        print(
+                            self.term.move_xy(square_x, square_y + line) +
+                            bg_color(left_pad) +
+                            bg_color(piece_text) +
+                            bg_color(right_pad) +
+                            self.term.normal
+                        )
+                        continue
 
                     print(
                         self.term.move_xy(square_x, square_y + line) +
