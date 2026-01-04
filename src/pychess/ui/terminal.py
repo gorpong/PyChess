@@ -214,10 +214,14 @@ class TerminalRenderer(Renderer):
                         piece_type, piece_color = piece_info
                         symbol = self.board_view.get_piece_symbol(piece_type, piece_color)
 
-                        # Color the piece text (white pieces = bright, black pieces = dark)
+                        # Color the piece text for better contrast
+                        # White pieces: Use blue/darkblue (visible on both light and dark squares)
+                        # Black pieces: Use black/darkgray (visible on light squares)
                         if piece_color == Color.WHITE:
-                            piece_text = self._safe_format(symbol, self.term.white)
+                            # Blue for white pieces - visible on both backgrounds
+                            piece_text = self._safe_format(symbol, self.term.blue)
                         else:
+                            # Black for black pieces - visible on light backgrounds
                             piece_text = self._safe_format(symbol, self.term.black)
 
                         # Center the piece in the square
