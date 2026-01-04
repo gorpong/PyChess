@@ -387,33 +387,34 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ---
 
 ### Milestone 3: Move Validation & Check Detection
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (265 tests passing)
 
 **Goal:** Filter pseudo-legal moves to only legal moves; detect check.
 
 **Tasks:**
-- [ ] Create `src/pychess/rules/validator.py`
-- [ ] Implement `is_square_attacked(board, square, by_color)` - checks if any piece of `by_color` attacks the square
-- [ ] Implement `is_in_check(board, color)` - checks if the king of `color` is in check
-- [ ] Implement `is_move_legal(game_state, move)` - validates move doesn't leave own king in check
-- [ ] Implement `get_legal_moves(game_state)` - returns all legal moves for current player
-- [ ] Add castling validation: king cannot castle out of, through, or into check
-- [ ] Add en passant validation: cannot expose king to check
-- [ ] Create `tests/rules/test_validator.py` with comprehensive tests
+- [x] Create `src/pychess/rules/validator.py`
+- [x] Implement `is_square_attacked(board, square, by_color)` - checks if any piece of `by_color` attacks the square
+- [x] Implement `is_in_check(board, color)` - checks if the king of `color` is in check
+- [x] Implement `is_move_legal(game_state, move)` - validates move doesn't leave own king in check
+- [x] Implement `get_legal_moves(game_state)` - returns all legal moves for current player
+- [x] Add castling validation: king cannot castle out of, through, or into check
+- [x] Add en passant validation: cannot expose king to check
+- [x] Create `tests/rules/test_validator.py` with comprehensive tests (38 tests)
 
-**Test cases must include:**
+**Test cases include:**
 - Basic check detection (single attacker)
 - Multiple attackers (double check)
-- Pinned pieces cannot move (or can only move along pin line)
+- Pinned pieces cannot move off pin line (can only move along pin line)
 - King cannot move into check
 - Blocking check with piece
 - Capturing attacking piece
 - Castling blocked by check/attack on traversal squares
 - En passant discovered check edge case
 
-**Files to create:**
+**Files created:**
 - `src/pychess/rules/validator.py`
-- `tests/rules/test_validator.py`
+- `tests/rules/test_validator.py` (38 tests)
+- Updated `src/pychess/rules/__init__.py` to export validator functions
 
 ---
 
