@@ -39,6 +39,21 @@ class TerminalRenderer(Renderer):
         self.status_messages: list[str] = []
         self.input_buffer = ""
 
+    def _safe_format(self, text: str, formatter) -> str:
+        """Safely apply a terminal formatter with fallback.
+
+        Args:
+            text: Text to format
+            formatter: Terminal formatter function (e.g., self.term.bold)
+
+        Returns:
+            Formatted text, or plain text if formatter fails
+        """
+        try:
+            return formatter(text)
+        except (TypeError, AttributeError):
+            return text
+
     def initialize(self) -> None:
         """Initialize the renderer and set up the display."""
         # Check terminal size
@@ -146,7 +161,7 @@ class TerminalRenderer(Renderer):
         # Draw title
         title = "PyChess - Terminal Chess Game"
         title_x = center_x + (board_total_width - len(title)) // 2
-        print(self.term.move_xy(title_x, 1) + self.term.bold(title))
+        print(self.term.move_xy(title_x, 1) + self._safe_format(title, self.term.bold))
 
         # Draw top border
         border_x = center_x + self.BOARD_START_X - 2
@@ -232,11 +247,11 @@ class TerminalRenderer(Renderer):
 
         # Display turn
         turn_text = f"Turn: {game_state.active_color.name}"
-        print(self.term.move_xy(5, status_y) + self.term.bold(turn_text))
+        print(self.term.move_xy(5, status_y) + self._safe_format(turn_text, self.term.bold))
 
         # Display move history (last 5 moves)
         history_y = status_y + 2
-        print(self.term.move_xy(5, history_y) + self.term.bold("Move History:"))
+        print(self.term.move_xy(5, history_y) + self._safe_format("Move History:", self.term.bold))
 
         moves = game_state.move_history
         last_moves = moves[-10:] if len(moves) > 10 else moves
@@ -252,7 +267,7 @@ class TerminalRenderer(Renderer):
 
         # Display status messages
         messages_y = status_y + 10
-        print(self.term.move_xy(5, messages_y) + self.term.bold("Status:"))
+        print(self.term.move_xy(5, messages_y) + self._safe_format("Status:", self.term.bold))
 
         # Show last 5 messages
         for idx, msg in enumerate(self.status_messages[-5:]):
@@ -264,11 +279,11 @@ class TerminalRenderer(Renderer):
 
         # Draw input prompt
         prompt = "Enter move (SAN): "
-        print(self.term.move_xy(5, input_y) + self.term.bold(prompt) + self.input_buffer)
+        print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold) + self.input_buffer)
 
-        # Draw help text
+        # Draw help text (with dim if available, otherwise normal)
         help_text = "Commands: q=quit, u=undo, r=restart, ?=help"
-        print(self.term.move_xy(5, input_y + 1) + self.term.dim(help_text))
+        print(self.term.move_xy(5, input_y + 1) + self._safe_format(help_text, self.term.dim))
 
     def get_input(self) -> str:
         """Get input from the user.
