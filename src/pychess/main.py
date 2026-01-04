@@ -1,8 +1,10 @@
 """Entry point for PyChess."""
 
 import sys
+from typing import Optional
 
 from pychess.model.game_state import GameState
+from pychess.model.piece import Color
 from pychess.model.square import Square
 from pychess.notation.san import san_to_move, move_to_san
 from pychess.rules.move import Move
@@ -11,6 +13,55 @@ from pychess.rules.game_logic import get_game_result
 from pychess.ui.terminal import TerminalRenderer
 from pychess.ui.cursor import CursorState
 from pychess.ui.input_handler import InputHandler, InputType
+from pychess.ui.overlays import show_help_overlay
+from pychess.ai.engine import AIEngine, Difficulty
+
+
+def select_game_mode(term) -> tuple[str, Optional[Difficulty]]:
+    """Show game mode selection menu.
+
+    Args:
+        term: Terminal instance
+
+    Returns:
+        Tuple of (mode, difficulty) where mode is "multiplayer" or "ai"
+        and difficulty is None for multiplayer or a Difficulty for AI
+    """
+    print(term.home() + term.clear())
+
+    menu_text = """
+╔══════════════════════════════════════════════════════════════════════╗
+║                     PyChess - Game Mode Selection                    ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+Select a game mode:
+
+  1. Multiplayer (Two Players)
+  2. vs AI - Easy (Random moves)
+  3. vs AI - Medium (Material-based)
+  4. vs AI - Hard (Material + Positional)
+
+  q. Quit
+
+Enter your choice (1-4, q): """
+
+    print(menu_text, end="", flush=True)
+
+    with term.cbreak():
+        while True:
+            key = term.inkey(timeout=None)
+            choice = str(key).lower()
+
+            if choice == '1':
+                return ("multiplayer", None)
+            elif choice == '2':
+                return ("ai", Difficulty.EASY)
+            elif choice == '3':
+                return ("ai", Difficulty.MEDIUM)
+            elif choice == '4':
+                return ("ai", Difficulty.HARD)
+            elif choice == 'q':
+                sys.exit(0)
 
 
 def main() -> None:
@@ -21,8 +72,14 @@ def main() -> None:
         # Initialize renderer
         renderer.initialize()
 
+        # Select game mode
+        mode, difficulty = select_game_mode(renderer.term)
+
+        # Create AI if needed
+        ai_engine = AIEngine(difficulty) if mode == "ai" else None
+
         # Start game loop
-        run_game(renderer)
+        run_game(renderer, ai_engine)
 
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -34,16 +91,18 @@ def main() -> None:
         renderer.cleanup()
 
 
-def run_game(renderer: TerminalRenderer) -> None:
+def run_game(renderer: TerminalRenderer, ai_engine: Optional[AIEngine] = None) -> None:
     """Run the main game loop with cursor-based navigation.
 
     Args:
         renderer: Terminal renderer instance
+        ai_engine: AI engine for single-player mode (None for multiplayer)
     """
     game_state = GameState.initial()
     cursor_state = CursorState.initial()
     input_handler = InputHandler()
     input_mode = "cursor"  # "cursor" or "san"
+    state_history = []  # Track previous states for undo
     status_messages = ["Welcome to PyChess!", "Use arrow keys to move cursor, Enter to select"]
 
     while True:
@@ -107,15 +166,23 @@ def run_game(renderer: TerminalRenderer) -> None:
                     break
                 continue
 
+            if user_input.lower() == 'u':
+                if state_history:
+                    game_state = state_history.pop()
+                    status_messages = ["Move undone"]
+                else:
+                    renderer.show_error("No moves to undo")
+                continue
+
             if user_input.lower() == 'r':
                 game_state = GameState.initial()
                 cursor_state = CursorState.initial()
+                state_history = []
                 status_messages = ["Game restarted!"]
                 continue
 
             if user_input.lower() == '?':
-                renderer.show_message("Enter moves in SAN notation (e.g., e4, Nf3)")
-                renderer.show_message("Press / to switch to cursor mode")
+                show_help_overlay(renderer.term)
                 continue
 
             # Try to parse as SAN move
@@ -127,12 +194,27 @@ def run_game(renderer: TerminalRenderer) -> None:
                     renderer.show_error(f"Illegal move: {user_input}")
                     continue
 
-                # Apply the move
+                # Apply the move - save state first
+                state_history.append(game_state)
                 from pychess.notation.pgn import _apply_san_move
                 san_notation = move_to_san(game_state, move)
                 game_state = _apply_san_move(game_state, san_notation, move)
 
                 status_messages = [f"Move: {san_notation}"]
+
+                # AI move (if applicable)
+                if ai_engine and game_state.active_color == Color.BLACK:
+                    status_messages.append("AI is thinking...")
+                    renderer.render(game_state, status_messages=status_messages)
+
+                    try:
+                        ai_move = ai_engine.select_move(game_state)
+                        state_history.append(game_state)
+                        ai_san = move_to_san(game_state, ai_move)
+                        game_state = _apply_san_move(game_state, ai_san, ai_move)
+                        status_messages = [f"Your move: {san_notation}", f"AI played: {ai_san}"]
+                    except ValueError:
+                        status_messages = ["AI has no legal moves"]
 
             except ValueError:
                 renderer.show_error(f"Invalid move: {user_input}")
@@ -174,12 +256,27 @@ def run_game(renderer: TerminalRenderer) -> None:
                             break
 
                     if matching_move:
-                        # Valid move - apply it
+                        # Valid move - save state and apply it
+                        state_history.append(game_state)
                         from pychess.notation.pgn import _apply_san_move
                         san_notation = move_to_san(game_state, matching_move)
                         game_state = _apply_san_move(game_state, san_notation, matching_move)
                         cursor_state = cursor_state.clear_selection()
                         status_messages = [f"Move: {san_notation}"]
+
+                        # AI move (if applicable)
+                        if ai_engine and game_state.active_color == Color.BLACK:
+                            status_messages.append("AI is thinking...")
+                            renderer.render(game_state, status_messages=status_messages)
+
+                            try:
+                                ai_move = ai_engine.select_move(game_state)
+                                state_history.append(game_state)
+                                ai_san = move_to_san(game_state, ai_move)
+                                game_state = _apply_san_move(game_state, ai_san, ai_move)
+                                status_messages = [f"Your move: {san_notation}", f"AI played: {ai_san}"]
+                            except ValueError:
+                                status_messages = ["AI has no legal moves"]
                     else:
                         # Invalid move
                         renderer.show_error("Illegal move")
@@ -212,16 +309,21 @@ def run_game(renderer: TerminalRenderer) -> None:
                     break
 
             elif event.input_type == InputType.UNDO:
-                renderer.show_message("Undo not yet implemented")
+                if state_history:
+                    game_state = state_history.pop()
+                    cursor_state = cursor_state.clear_selection()
+                    status_messages = ["Move undone"]
+                else:
+                    renderer.show_error("No moves to undo")
 
             elif event.input_type == InputType.RESTART:
                 game_state = GameState.initial()
                 cursor_state = CursorState.initial()
+                state_history = []
                 status_messages = ["Game restarted!"]
 
             elif event.input_type == InputType.HELP:
-                renderer.show_message("Arrow keys=move cursor, Enter=select/move")
-                renderer.show_message("q=quit, r=restart, Esc=cancel, /=SAN mode")
+                show_help_overlay(renderer.term)
 
             elif event.input_type == InputType.TOGGLE_MODE:
                 input_mode = "san"
