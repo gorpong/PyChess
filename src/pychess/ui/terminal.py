@@ -297,16 +297,25 @@ class TerminalRenderer(Renderer):
         for idx, msg in enumerate(self.status_messages[-5:]):
             print(self.term.move_xy(5, messages_y + 1 + idx) + msg)
 
-    def _render_input(self) -> None:
-        """Render the input area."""
+    def _render_input(self, mode: str = "san") -> None:
+        """Render the input area.
+
+        Args:
+            mode: Input mode - "san" for SAN notation, "cursor" for cursor navigation
+        """
         input_y = self.term.height - 3
 
-        # Draw input prompt
-        prompt = "Enter move (SAN): "
-        print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold) + self.input_buffer)
+        if mode == "cursor":
+            # Cursor mode instructions
+            prompt = "Cursor Mode: Use arrow keys to move, Enter to select/move"
+            print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold))
+            help_text = "Commands: q=quit, u=undo, r=restart, Esc=cancel, /=SAN mode"
+        else:
+            # SAN input mode
+            prompt = "Enter move (SAN): "
+            print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold) + self.input_buffer)
+            help_text = "Commands: q=quit, u=undo, r=restart, ?=help"
 
-        # Draw help text (with dim if available, otherwise normal)
-        help_text = "Commands: q=quit, u=undo, r=restart, ?=help"
         print(self.term.move_xy(5, input_y + 1) + self._safe_format(help_text, self.term.dim))
 
     def get_input(self) -> str:
@@ -343,6 +352,15 @@ class TerminalRenderer(Renderer):
 
                 # Re-render input area
                 self._render_input()
+
+    def get_key_input(self):
+        """Get a single key press for cursor navigation.
+
+        Returns:
+            Key object from blessed Terminal
+        """
+        with self.term.cbreak():
+            return self.term.inkey(timeout=None)
 
     def show_error(self, message: str) -> None:
         """Display an error message to the user.

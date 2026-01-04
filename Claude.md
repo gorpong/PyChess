@@ -582,25 +582,47 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ---
 
 ### Milestone 8: Cursor & Selection System
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (369 tests passing)
 
 **Goal:** Arrow key navigation and Enter-based piece selection.
 
 **Tasks:**
-- [ ] Create `src/pychess/ui/cursor.py` - cursor state management
-- [ ] Create `src/pychess/ui/input_handler.py` - keyboard input processing
-- [ ] Implement cursor rendering (highlight current square)
-- [ ] Implement arrow key movement (wrapping at edges optional)
-- [ ] Implement Enter to select piece (validate own piece)
-- [ ] Implement Enter on destination to attempt move
-- [ ] Implement Enter on source square to cancel selection
-- [ ] Implement Escape to cancel selection
-- [ ] Implement selected piece highlighting (different from cursor)
-- [ ] Implement illegal move error display
+- [x] Create `src/pychess/ui/cursor.py` - cursor state management
+- [x] Create `src/pychess/ui/input_handler.py` - keyboard input processing
+- [x] Implement cursor rendering (highlight current square)
+- [x] Implement arrow key movement (no wrapping at edges)
+- [x] Implement Enter to select piece (validates own piece)
+- [x] Implement Enter on destination to attempt move
+- [x] Implement Escape to cancel selection
+- [x] Implement selected piece highlighting (cyan background)
+- [x] Implement cursor highlighting (yellow background)
+- [x] Implement legal move highlighting (green background)
+- [x] Implement illegal move error display
+- [x] Update main game loop to use cursor-based input
 
-**Files to create:**
+**Features implemented:**
+- `CursorState` dataclass for managing cursor position and selection
+- Arrow key navigation (up/down/left/right)
+- Enter key selection mechanics:
+  - First Enter: Select piece (validates it's your piece)
+  - Second Enter: Attempt move to cursor position
+  - Enter on empty square: Clear selection
+- Escape key to cancel selection
+- Visual feedback:
+  - Yellow highlight: Current cursor position
+  - Cyan highlight: Selected piece
+  - Green highlight: Legal destination squares for selected piece
+- Automatic legal move calculation and highlighting
+- Error messages for invalid selections and illegal moves
+- Command keys: q (quit), r (restart), u (undo), ? (help)
+
+**Files created:**
 - `src/pychess/ui/cursor.py`
 - `src/pychess/ui/input_handler.py`
+- Updated `src/pychess/ui/terminal.py` with cursor mode support
+- Updated `src/pychess/main.py` with cursor-based game loop
+
+**Note:** The game now supports intuitive cursor-based navigation! Use arrow keys to move, Enter to select and move pieces. Legal moves are highlighted in green when a piece is selected.
 
 ---
 
