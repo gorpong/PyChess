@@ -538,28 +538,46 @@ Ask clarifying questions **only when necessary**; otherwise choose reasonable de
 ---
 
 ### Milestone 7: Basic Terminal UI
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (369 tests passing)
 
 **Goal:** Render board and accept SAN input using `blessed` library.
 
 **Tasks:**
-- [ ] Create `src/pychess/ui/renderer.py` - abstract renderer interface
-- [ ] Create `src/pychess/ui/terminal.py` - blessed-based implementation
-- [ ] Create `src/pychess/ui/board_view.py` - board drawing logic
-- [ ] Implement terminal size detection (100x44 minimum)
-- [ ] Implement board rendering with rank/file labels
-- [ ] Implement piece rendering (Unicode glyphs with ASCII fallback)
-- [ ] Implement light/dark square background colors
-- [ ] Implement status message area (last 3-5 messages)
-- [ ] Implement SAN text input field
-- [ ] Create basic game loop (alternating turns)
-- [ ] Center board for larger terminals
+- [x] Create `src/pychess/ui/renderer.py` - abstract renderer interface
+- [x] Create `src/pychess/ui/terminal.py` - blessed-based implementation
+- [x] Create `src/pychess/ui/board_view.py` - board drawing logic
+- [x] Implement terminal size detection (100x44 minimum)
+- [x] Implement board rendering with rank/file labels
+- [x] Implement piece rendering (Unicode glyphs with ASCII fallback)
+- [x] Implement light/dark square background colors
+- [x] Implement status message area (last 5 messages)
+- [x] Implement SAN text input field
+- [x] Create basic game loop (alternating turns)
+- [x] Center board for larger terminals
+- [x] Update main.py with functional game loop
 
-**Files to create:**
+**Features implemented:**
+- Abstract `Renderer` interface for separation of concerns
+- `TerminalRenderer` using blessed library with full color support
+- `BoardView` with Unicode chess piece symbols and ASCII fallback
+- Board rendering with 6x3 character squares for visibility
+- Background colors: white/gray for light/dark squares
+- Highlighting: yellow for cursor, cyan for selection, green for legal moves
+- Status area showing: current turn, move history (last 5 moves), status messages
+- Input area with prompt and help text
+- Basic commands: q=quit, u=undo (placeholder), r=restart, ?=help
+- Full SAN move parsing and execution
+- Game end detection (checkmate, stalemate, draw)
+- Error handling and validation
+
+**Files created:**
 - `src/pychess/ui/__init__.py`
 - `src/pychess/ui/renderer.py`
 - `src/pychess/ui/terminal.py`
 - `src/pychess/ui/board_view.py`
+- Updated `src/pychess/main.py` with game loop
+
+**Note:** The game is now playable with SAN input! Cursor/keyboard movement and mouse support will be added in Milestone 8.
 
 ---
 
