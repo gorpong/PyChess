@@ -21,7 +21,8 @@ def show_help_overlay(term: Terminal) -> None:
 CURSOR MODE (Default):
   Arrow Keys        - Move cursor around the board
   Enter             - Select piece / Make move
-  Escape            - Cancel selection
+  Escape            - Cancel selection (press twice in Multiplayer)
+  TAB               - Show/hide legal move hints (AI Easy/Medium only)
   /                 - Switch to SAN input mode
 
 SAN INPUT MODE:
@@ -36,7 +37,8 @@ GLOBAL COMMANDS:
 
 GAME MECHANICS:
   • Use arrow keys to navigate and Enter to select/move pieces
-  • In cursor mode, legal moves are highlighted in green
+  • Press TAB to show legal moves for selected piece (AI Easy/Medium)
+  • Legal moves are highlighted in green when hints enabled
   • Selected piece is highlighted in cyan
   • Current cursor position is highlighted in yellow
   • Moves are recorded in Standard Algebraic Notation (SAN)

@@ -23,6 +23,7 @@ class InputType(Enum):
     HELP = auto()
     TOGGLE_MODE = auto()  # Switch between cursor and SAN mode
     SAN_INPUT = auto()  # Text input for SAN notation
+    SHOW_HINTS = auto()  # TAB key - show legal move hints
     UNKNOWN = auto()
 
 
@@ -62,6 +63,8 @@ class InputHandler:
             return InputEvent(InputType.SELECT)
         elif key.name == "KEY_ESCAPE":
             return InputEvent(InputType.CANCEL)
+        elif key.name == "KEY_TAB":
+            return InputEvent(InputType.SHOW_HINTS)
 
         # Handle character keys
         char = str(key).lower()

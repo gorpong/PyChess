@@ -103,7 +103,20 @@ def run_game(renderer: TerminalRenderer, ai_engine: Optional[AIEngine] = None) -
     input_handler = InputHandler()
     input_mode = "cursor"  # "cursor" or "san"
     state_history = []  # Track previous states for undo
-    status_messages = ["Welcome to PyChess!", "Use arrow keys to move cursor, Enter to select"]
+
+    # Determine if hints are allowed (only in AI Easy/Medium mode per Milestone 13)
+    hints_allowed = (
+        ai_engine is not None and
+        ai_engine.difficulty in (Difficulty.EASY, Difficulty.MEDIUM)
+    )
+
+    # Determine if this is multiplayer mode (for cancel confirmation)
+    is_multiplayer = ai_engine is None
+
+    if hints_allowed:
+        status_messages = ["Welcome to PyChess!", "Use arrow keys to move, Enter to select, TAB for hints"]
+    else:
+        status_messages = ["Welcome to PyChess!", "Use arrow keys to move cursor, Enter to select"]
 
     while True:
         # Check for game end
@@ -122,9 +135,9 @@ def run_game(renderer: TerminalRenderer, ai_engine: Optional[AIEngine] = None) -
             renderer.get_key_input()
             break
 
-        # Get legal moves for highlighting (if piece selected)
+        # Get legal moves for highlighting (only if piece selected AND hints requested)
         legal_move_squares = set()
-        if cursor_state.selected_square:
+        if cursor_state.selected_square and cursor_state.show_hints and hints_allowed:
             # Find legal moves from selected square
             all_legal_moves = get_legal_moves(game_state)
             for move in all_legal_moves:
@@ -298,8 +311,18 @@ def run_game(renderer: TerminalRenderer, ai_engine: Optional[AIEngine] = None) -
                         cursor_state = cursor_state.clear_selection()
 
             elif event.input_type == InputType.CANCEL:
-                cursor_state = cursor_state.cancel_selection()
-                status_messages = ["Selection cancelled"]
+                if cursor_state.pending_cancel:
+                    # Second Escape confirms cancel in multiplayer
+                    cursor_state = cursor_state.confirm_cancel()
+                    status_messages = ["Selection cancelled"]
+                elif is_multiplayer and cursor_state.selected_square:
+                    # First Escape in multiplayer: request confirmation
+                    cursor_state = cursor_state.request_cancel()
+                    status_messages = ["Press Escape again to cancel, or continue playing"]
+                else:
+                    # AI mode or nothing selected: immediate cancel
+                    cursor_state = cursor_state.cancel_selection()
+                    status_messages = ["Selection cancelled"]
 
             elif event.input_type == InputType.QUIT:
                 # Clear screen for confirmation prompt
@@ -329,6 +352,19 @@ def run_game(renderer: TerminalRenderer, ai_engine: Optional[AIEngine] = None) -
                 input_mode = "san"
                 cursor_state = cursor_state.clear_selection()
                 status_messages = ["Switched to SAN input mode - type moves like 'e4'"]
+
+            elif event.input_type == InputType.SHOW_HINTS:
+                if hints_allowed:
+                    if cursor_state.selected_square:
+                        cursor_state = cursor_state.toggle_hints()
+                        if cursor_state.show_hints:
+                            status_messages = ["Showing legal moves (TAB to hide)"]
+                        else:
+                            status_messages = ["Hints hidden"]
+                    else:
+                        renderer.show_error("Select a piece first, then press TAB for hints")
+                else:
+                    renderer.show_error("Hints not available in this mode")
 
 
 if __name__ == "__main__":
