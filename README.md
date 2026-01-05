@@ -2,8 +2,6 @@
 
 A fully-featured, beautiful terminal-based chess game written in Python. Play chess right in your terminal with Unicode pieces, color-coded squares, and full chess rules implementation.
 
-![PyChess Demo](docs/screenshot.png)
-
 ## Features
 
 - ✨ **Beautiful Terminal UI** - Color-coded board with Unicode chess pieces
