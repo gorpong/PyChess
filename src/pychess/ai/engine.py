@@ -95,24 +95,15 @@ class AIEngine:
     def _select_positional(self, game_state: GameState, legal_moves: list[Move]) -> Move:
         """Select move with positional evaluation (Hard difficulty).
 
+        Uses piece-square tables for stronger positional play.
+
         Args:
             game_state: Current game state
             legal_moves: List of legal moves
 
         Returns:
-            Best move based on material + position
+            Best move based on material + piece-square tables
         """
-        from pychess.ai.evaluation import evaluate_position
+        from pychess.ai.hard import select_best_move
 
-        best_move = None
-        best_score = float('-inf')
-
-        for move in legal_moves:
-            # Evaluate position after move
-            score = evaluate_position(game_state, move)
-
-            if score > best_score:
-                best_score = score
-                best_move = move
-
-        return best_move if best_move else random.choice(legal_moves)
+        return select_best_move(game_state, legal_moves)
