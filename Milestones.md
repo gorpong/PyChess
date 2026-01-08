@@ -391,7 +391,7 @@
 ---
 
 ### Milestone 12: AI - Hard
-**Status:** ✅ COMPLETE (438 tests passing)
+**Status:** ✅ COMPLETE (460 tests passing)
 
 **Goal:** Positional evaluation for stronger AI play.
 
@@ -430,7 +430,7 @@
 **Files created:**
 - `src/pychess/ai/hard.py` - piece-square tables, evaluation, move ordering
 - `tests/ai/__init__.py`
-- `tests/ai/test_hard.py` - 42 comprehensive tests
+- `tests/ai/test_hard.py` - 64 tests (42 initial + 22 edge cases)
 
 **Files modified:**
 - `src/pychess/ai/engine.py` - Hard difficulty now uses hard.py module
