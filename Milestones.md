@@ -391,29 +391,52 @@
 ---
 
 ### Milestone 12: AI - Hard
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (460 tests passing)
 
 **Goal:** Positional evaluation for stronger AI play.
 
 **Tasks:**
-- [ ] Create `src/pychess/ai/hard.py`
-- [ ] Implement piece-square tables for positional scoring
-- [ ] Combine material + positional evaluation
-- [ ] Implement move ordering for better play
-- [ ] Implement cancel restriction for Hard+ difficulty
-- [ ] Create `tests/ai/test_hard.py`
+- [x] Create `src/pychess/ai/hard.py`
+- [x] Implement piece-square tables for positional scoring
+- [x] Combine material + positional evaluation
+- [x] Implement move ordering for better play
+- [x] Create `tests/ai/test_hard.py`
 
-**Piece-square table concepts:**
-- Pawns: value center control, advancement
-- Knights: value center squares, penalize edges
-- Bishops: value diagonals, penalize blocked
-- Rooks: value open files, 7th rank
-- Queen: slightly prefer center early
-- King: castle early (corners), centralize in endgame
+**Features implemented:**
+- **Piece-square tables** for all piece types:
+  - Pawns: bonus for center control and advancement, high value on rank 7
+  - Knights: strong center preference, penalties on rim/corners
+  - Bishops: value diagonals, avoid corners
+  - Rooks: bonus for 7th rank
+  - Queen: slight center preference
+  - King: separate middlegame (prefer castled) and endgame (prefer center) tables
+- **Endgame detection**: switches king evaluation when no queens or minimal material
+- **Move ordering** using MVV-LVA (Most Valuable Victim - Least Valuable Attacker):
+  - Promotions ordered first (highest priority)
+  - Captures ordered by victim value minus attacker value
+  - Castling given modest bonus
+  - Quiet moves ordered last
+- **Combined evaluation**: material score + piece-square positional score
+- **Integration with AIEngine**: Hard difficulty now uses piece-square evaluation
 
-**Files to create:**
-- `src/pychess/ai/hard.py`
-- `tests/ai/test_hard.py`
+**Piece-square table values (centipawns):**
+- Center squares get positive bonuses (up to +20 for knights)
+- Edge squares get penalties (up to -50 for knights in corners)
+- Pawn rank 7 gets +50 bonus (near promotion)
+- Rook on 7th rank gets +5-10 bonus
+- King middlegame: +20-30 for castled positions, -50 for center
+- King endgame: +40 for center, -50 for corners
+
+**Files created:**
+- `src/pychess/ai/hard.py` - piece-square tables, evaluation, move ordering
+- `tests/ai/__init__.py`
+- `tests/ai/test_hard.py` - 64 tests (42 initial + 22 edge cases)
+
+**Files modified:**
+- `src/pychess/ai/engine.py` - Hard difficulty now uses hard.py module
+- `src/pychess/ai/__init__.py` - exports new functions
+
+**Note:** Cancel restriction for Hard+ difficulty was already implemented in Milestone 13 (hints disabled in Hard mode, immediate cancel). The core hard AI evaluation is now significantly stronger with proper positional understanding.
 
 ---
 
