@@ -496,19 +496,20 @@
 ---
 
 ### Milestone 14: Integration & CLI
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (567 tests passing)
 
 **Goal:** Complete application with full CLI interface.
 
 **Tasks:**
-- [ ] Create `src/pychess/controller/__init__.py`
-- [ ] Create `src/pychess/controller/game_controller.py` - main game orchestration
-- [ ] Update `src/pychess/main.py` with CLI argument parsing
-- [ ] Implement `--list-games` to show saved games
-- [ ] Implement `--load <name>` to load a saved game
-- [ ] Implement game mode selection menu
-- [ ] Create end-to-end integration tests
-- [ ] Final documentation and README updates
+- [x] Create `src/pychess/controller/__init__.py`
+- [x] Create `src/pychess/controller/game_session.py` - main game orchestration
+- [x] Update `src/pychess/main.py` with CLI argument parsing
+- [x] Implement `--list-games` to show saved games
+- [x] Implement `--load <name>` to load a saved game
+- [x] Implement game mode selection menu
+- [x] Create persistence layer with save/load functionality
+- [x] Implement security validation for game names (path traversal protection)
+- [x] Create end-to-end integration tests
 
 **CLI interface:**
 ```
@@ -518,8 +519,27 @@ pychess --load "Game 1"    # Load saved game
 pychess --help             # Show help
 ```
 
-**Files to create:**
+**Security features:**
+- Game names validated for path traversal attacks (/, \, .., :, null bytes)
+- Hidden files rejected (names starting with .)
+- Invalid names cause immediate exit with error (no retry)
+- Maximum 10 saved games with automatic eviction policy
+
+**Persistence features:**
+- Games saved as PGN files in `~/.pychess/saves/`
+- Automatic save prompt on quit for incomplete games
+- Automatic save for completed games
+- 10-game limit with eviction (oldest completed games first)
+- Incomplete games preserved preferentially
+
+**Files created:**
+- `src/pychess/__main__.py` - module entry point
+- `src/pychess/cli.py` - CLI argument parsing and handlers
 - `src/pychess/controller/__init__.py`
-- `src/pychess/controller/game_controller.py`
+- `src/pychess/controller/game_session.py` - game loop orchestration
+- `src/pychess/persistence/save_manager.py` - save/load functionality
+- `tests/test_cli.py` - 16 CLI tests
+- `tests/controller/test_game_session.py` - 54 session tests
+- `tests/persistence/test_save_manager.py` - 37 persistence tests
 
 ---

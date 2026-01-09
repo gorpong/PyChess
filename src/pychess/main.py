@@ -1,11 +1,16 @@
 """Entry point for PyChess."""
 
 import sys
+import time
 from typing import Optional
 
 from pychess.ui.terminal import TerminalRenderer
 from pychess.ai.engine import AIEngine, Difficulty
 from pychess.controller.game_session import GameSession
+from pychess.cli import run_cli, CLIError
+from pychess.model.game_state import GameState
+from pychess.notation.pgn import PGNHeaders
+from pychess.persistence.save_manager import SaveManager, sanitize_game_name, InvalidGameNameError
 
 
 def select_game_mode(term) -> tuple[str, Optional[Difficulty]]:
@@ -55,29 +60,154 @@ Enter your choice (1-4, q): """
                 sys.exit(0)
 
 
+def prompt_save_game(
+    renderer,
+    session: GameSession,
+    save_manager: SaveManager,
+    game_name: Optional[str] = None
+) -> None:
+    """Prompt user to save an incomplete game.
+    
+    Args:
+        renderer: Terminal renderer
+        session: Current game session
+        save_manager: Save manager instance
+        game_name: Existing game name (for loaded games)
+    """
+    # Only prompt for incomplete games with moves
+    if not session.game_state.move_history:
+        return
+    
+    print(renderer.term.home() + renderer.term.clear())
+    
+    # Ask if they want to save
+    save_choice = input("Save this game before quitting? (y/n): ").strip().lower()
+    if save_choice != 'y':
+        return
+    
+    # Get game name
+    if game_name:
+        use_existing = input(f"Save as '{game_name}'? (y/n): ").strip().lower()
+        if use_existing == 'y':
+            name = game_name
+        else:
+            name = input("Enter a name for this game: ").strip()
+    else:
+        name = input("Enter a name for this game: ").strip()
+    
+    if not name:
+        print("No name provided. Game not saved.")
+        return
+    
+    # Sanitize the name
+    try:
+        sanitized_name = sanitize_game_name(name)
+    except InvalidGameNameError as e:
+        print(f"Invalid name: {e}")
+        return
+    
+    # Create headers
+    headers = PGNHeaders(
+        event="Casual Game",
+        site="Terminal",
+        white="White" if session.is_multiplayer else "Player",
+        black="Black" if session.is_multiplayer else "Computer",
+        result="*",  # Incomplete
+        total_time_seconds=int(time.time() - session.start_time),
+    )
+    
+    # Save the game
+    try:
+        filepath = save_manager.save_game(sanitized_name, session.game_state, headers)
+        print(f"Game saved as '{sanitized_name}'")
+    except Exception as e:
+        print(f"Error saving game: {e}")
+
+
 def main() -> None:
     """Main entry point for the pychess command."""
+    # Handle CLI arguments first (before initializing renderer)
+    loaded_game = run_cli()
+    
     renderer = TerminalRenderer(use_unicode=True)
+    save_manager = SaveManager()
+    game_name: Optional[str] = None
 
     try:
         # Initialize renderer
         renderer.initialize()
 
-        # Select game mode
-        mode, difficulty = select_game_mode(renderer.term)
+        if loaded_game:
+            # Load existing game
+            state, headers, game_name = loaded_game
+            
+            # Determine if it was an AI game
+            # For now, loaded games are always multiplayer
+            # (we'd need to store AI difficulty in PGN to restore it)
+            ai_engine = None
+            
+            # Create session with loaded state
+            session = GameSession(renderer, ai_engine)
+            session.game_state = state
+            session.status_messages = [
+                f"Loaded game: {game_name}",
+                f"{headers.white} vs {headers.black}",
+            ]
+        else:
+            # Select game mode for new game
+            mode, difficulty = select_game_mode(renderer.term)
 
-        # Create AI if needed
-        ai_engine = AIEngine(difficulty) if mode == "ai" else None
+            # Create AI if needed
+            ai_engine = AIEngine(difficulty) if mode == "ai" else None
 
-        # Create and run game session
-        session = GameSession(renderer, ai_engine)
+            # Create new game session
+            session = GameSession(renderer, ai_engine)
+        
+        # Run the game
         session.run()
+        
+        # After game ends, prompt to save if incomplete
+        from pychess.rules.game_logic import get_game_result
+        result = get_game_result(session.game_state)
+        
+        if result:
+            # Game completed - save automatically with result
+            if session.game_state.move_history:
+                headers = PGNHeaders(
+                    event="Casual Game",
+                    site="Terminal",
+                    white="White" if session.is_multiplayer else "Player",
+                    black="Black" if session.is_multiplayer else "Computer",
+                    result=result,
+                    total_time_seconds=int(time.time() - session.start_time),
+                )
+                
+                # Generate a default name if not loaded
+                if not game_name:
+                    # Find next available game number
+                    existing = save_manager.list_games()
+                    game_num = len(existing) + 1
+                    game_name = f"Game_{game_num}"
+                
+                try:
+                    save_manager.save_game(game_name, session.game_state, headers)
+                except Exception:
+                    pass  # Don't fail on save errors for completed games
+        else:
+            # Game incomplete - prompt to save
+            prompt_save_game(renderer, session, save_manager, game_name)
 
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nGame interrupted by user.", file=sys.stderr)
+        # Handle Ctrl+C - prompt to save
+        print("\n")
+        try:
+            prompt_save_game(renderer, session, save_manager, game_name)
+        except Exception:
+            pass
+        print("Game interrupted by user.", file=sys.stderr)
     finally:
         # Clean up
         renderer.cleanup()

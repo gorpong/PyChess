@@ -23,6 +23,16 @@ class TestGameSessionInit:
         assert session.game_state.fullmove_number == 1
         assert session.game_state.active_color == Color.WHITE
 
+    def test_start_time_is_set(self):
+        """GameSession should record start time."""
+        import time
+        renderer = Mock()
+        before = time.time()
+        session = GameSession(renderer)
+        after = time.time()
+        
+        assert before <= session.start_time <= after
+
     def test_creates_initial_cursor_state(self):
         """GameSession should start with cursor at e2."""
         renderer = Mock()

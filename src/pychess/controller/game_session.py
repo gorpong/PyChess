@@ -4,6 +4,7 @@ This module provides the GameSession class which orchestrates the game loop,
 handling input events, game state updates, and AI integration.
 """
 
+import time
 from typing import Optional
 
 from pychess.model.game_state import GameState
@@ -37,6 +38,7 @@ class GameSession:
         status_messages: List of status messages to display
         hints_allowed: Whether hints are available in this mode
         is_multiplayer: Whether this is a two-player game
+        start_time: Unix timestamp when the session started
     """
 
     def __init__(
@@ -58,6 +60,9 @@ class GameSession:
         self.cursor_state = CursorState.initial()
         self.input_mode = "cursor"
         self.state_history: list[GameState] = []
+        
+        # Timing
+        self.start_time = time.time()
         
         # Session configuration
         self.hints_allowed = (
