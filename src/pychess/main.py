@@ -105,6 +105,14 @@ def prompt_save_game(
     except InvalidGameNameError as e:
         print(f"Invalid name: {e}")
         return
+
+    # Determine game mode string
+    if session.is_multiplayer:
+        game_mode = "Multiplayer"
+    elif session.ai_engine:
+        game_mode = session.ai_engine.difficulty.name.capitalize()
+    else:
+        game_mode = "Multiplayer"
     
     # Create headers
     headers = PGNHeaders(
@@ -114,6 +122,7 @@ def prompt_save_game(
         black="Black" if session.is_multiplayer else "Computer",
         result="*",  # Incomplete
         total_time_seconds=int(time.time() - session.start_time),
+        game_mode=game_mode,
     )
     
     # Save the game
@@ -141,17 +150,26 @@ def main() -> None:
             # Load existing game
             state, headers, game_name = loaded_game
             
-            # Determine if it was an AI game
-            # For now, loaded games are always multiplayer
-            # (we'd need to store AI difficulty in PGN to restore it)
+            # Restore AI engine from saved game mode
             ai_engine = None
+            game_mode_str = headers.game_mode
             
+            if game_mode_str == "Easy":
+                ai_engine = AIEngine(Difficulty.EASY)
+            elif game_mode_str == "Medium":
+                ai_engine = AIEngine(Difficulty.MEDIUM)
+            elif game_mode_str == "Hard":
+                ai_engine = AIEngine(Difficulty.HARD)
+            # "Multiplayer" or unknown = no AI engine
+
             # Create session with loaded state
             session = GameSession(renderer, ai_engine)
             session.game_state = state
+            
+            mode_display = game_mode_str if game_mode_str != "Multiplayer" else "Two Players"
             session.status_messages = [
                 f"Loaded game: {game_name}",
-                f"{headers.white} vs {headers.black}",
+                f"{headers.white} vs {headers.black} ({mode_display})",
             ]
         else:
             # Select game mode for new game
@@ -173,6 +191,14 @@ def main() -> None:
         if result:
             # Game completed - save automatically with result
             if session.game_state.move_history:
+                # Determine game mode string
+                if session.is_multiplayer:
+                    game_mode = "Multiplayer"
+                elif session.ai_engine:
+                    game_mode = session.ai_engine.difficulty.name.capitalize()
+                else:
+                    game_mode = "Multiplayer"
+                
                 headers = PGNHeaders(
                     event="Casual Game",
                     site="Terminal",
@@ -180,6 +206,7 @@ def main() -> None:
                     black="Black" if session.is_multiplayer else "Computer",
                     result=result,
                     total_time_seconds=int(time.time() - session.start_time),
+                    game_mode=game_mode,
                 )
                 
                 # Generate a default name if not loaded

@@ -375,6 +375,62 @@ class TestSaveLimit:
         assert manager.game_exists("OldIncomplete")
 
 
+class TestGameModePreservation:
+    """Tests for AI difficulty preservation in saved games."""
+
+    @pytest.fixture
+    def save_dir(self):
+        """Create a temporary save directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def manager(self, save_dir):
+        """Create a SaveManager with temp directory."""
+        return SaveManager(save_dir)
+
+    def test_save_multiplayer_game_mode(self, manager):
+        """Multiplayer game should save game_mode as 'Multiplayer'."""
+        state = GameState.initial()
+        headers = PGNHeaders(game_mode="Multiplayer")
+        manager.save_game("MultiplayerGame", state, headers)
+        
+        _, loaded_headers = manager.load_game("MultiplayerGame")
+        assert loaded_headers.game_mode == "Multiplayer"
+
+    def test_save_easy_ai_game_mode(self, manager):
+        """Easy AI game should save game_mode as 'Easy'."""
+        state = GameState.initial()
+        headers = PGNHeaders(game_mode="Easy")
+        manager.save_game("EasyGame", state, headers)
+        
+        _, loaded_headers = manager.load_game("EasyGame")
+        assert loaded_headers.game_mode == "Easy"
+
+    def test_save_medium_ai_game_mode(self, manager):
+        """Medium AI game should save game_mode as 'Medium'."""
+        state = GameState.initial()
+        headers = PGNHeaders(game_mode="Medium")
+        manager.save_game("MediumGame", state, headers)
+        
+        _, loaded_headers = manager.load_game("MediumGame")
+        assert loaded_headers.game_mode == "Medium"
+
+    def test_save_hard_ai_game_mode(self, manager):
+        """Hard AI game should save game_mode as 'Hard'."""
+        state = GameState.initial()
+        headers = PGNHeaders(game_mode="Hard")
+        manager.save_game("HardGame", state, headers)
+        
+        _, loaded_headers = manager.load_game("HardGame")
+        assert loaded_headers.game_mode == "Hard"
+
+    def test_default_game_mode_is_multiplayer(self):
+        """Default game_mode should be 'Multiplayer'."""
+        headers = PGNHeaders()
+        assert headers.game_mode == "Multiplayer"
+
+
 class TestSavedGameInfo:
     """Tests for SavedGameInfo dataclass."""
 

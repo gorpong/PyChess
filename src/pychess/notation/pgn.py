@@ -33,6 +33,7 @@ class PGNHeaders:
     result: str = "*"  # 1-0, 0-1, 1/2-1/2, or * (ongoing)
     time_control: str = "-"
     total_time_seconds: int = 0
+    game_mode: str = "Multiplayer"  # "Multiplayer", "Easy", "Medium", "Hard"
 
     def __post_init__(self):
         if not self.date:
@@ -72,6 +73,7 @@ def game_to_pgn(
     lines.append(f'[Result "{headers.result}"]')
     lines.append(f'[TimeControl "{headers.time_control}"]')
     lines.append(f'[TotalTimeSeconds "{headers.total_time_seconds}"]')
+    lines.append(f'[GameMode "{headers.game_mode}"]')
     lines.append("")  # Blank line after headers
 
     # Move text
@@ -169,6 +171,8 @@ def _parse_headers(pgn_string: str) -> PGNHeaders:
                 headers.total_time_seconds = int(value)
             except ValueError:
                 pass
+        elif tag == "gamemode":
+            headers.game_mode = value
 
     return headers
 
