@@ -11,7 +11,7 @@ We are building a **terminal-based ASCII Chess game in Python**, designed to be 
     * Medium
     * Hard
     * Expert (optional)
-* Written in **Python 3.12+**
+* Written in **Python 3.11+**
 * Prioritize **clarity, explicit control flow, and readable loops**
 * Use **simple, idiomatic Python**
 
@@ -81,7 +81,7 @@ Additional rules:
 
 ## Technology Constraints
 
-- Language: Python 3.12+
+- Language: Python 3.11+
 - Platform: Terminal (ANSI / curses)
 - No external game engines
 - Standard library preferred
@@ -89,10 +89,12 @@ Additional rules:
 - Complete games are saved and loaded using **PGN (Portable Game Notation)**, which is a container format that includes headers, SAN moves, comments, and metadata.
 
 ### Development Process
-- Use test-driven development where practical
+- Use test-driven development with RED+GREEN states when developing new code
 - Work in small, reviewable steps
 - Do not commit without explicit user approval
+- Include as part of the approval seeking process the proposed commit message
 - Present a plan before writing significant code
+- Present a plan before modifying more than 50% of an existing code file/method
 - If a post-commit fix is required, label it clearly as a fix and what the problem was
 
 ### Code Style
