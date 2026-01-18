@@ -377,9 +377,37 @@ class TestUndo:
 class TestRestart:
     """Tests for restart functionality."""
 
-    def test_restart_resets_game_state(self):
-        """Restart should reset game state to initial."""
+    def test_restart_requires_confirmation(self):
+        """Restart should require confirmation before resetting."""
         renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
+        session = GameSession(renderer)
+        
+        # Make a move so there's history
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=4),
+            selected_square=Square(file="e", rank=2)
+        )
+        session.handle_input(InputEvent(InputType.SELECT))
+        original_state = session.game_state
+        
+        # Restart with 'n' confirmation - should not reset
+        with patch('builtins.input', return_value='n'):
+            with patch('builtins.print'):
+                session.handle_input(InputEvent(InputType.RESTART))
+        
+        # Game should NOT have been reset
+        assert session.game_state is original_state
+        assert len(session.state_history) > 0
+
+    def test_restart_confirmed_resets_game(self):
+        """Restart should reset game when user confirms with 'y'."""
+        renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
         session = GameSession(renderer)
         
         # Make a move
@@ -389,16 +417,21 @@ class TestRestart:
         )
         session.handle_input(InputEvent(InputType.SELECT))
         
-        # Restart
-        session.handle_input(InputEvent(InputType.RESTART))
+        # Restart with 'y' confirmation
+        with patch('builtins.input', return_value='y'):
+            with patch('builtins.print'):
+                session.handle_input(InputEvent(InputType.RESTART))
         
         assert session.game_state.fullmove_number == 1
         assert session.game_state.active_color == Color.WHITE
         assert session.game_state.board.get(Square(file="e", rank=2)) is not None
 
-    def test_restart_clears_history(self):
-        """Restart should clear state history."""
+    def test_restart_clears_history_when_confirmed(self):
+        """Restart should clear state history when confirmed."""
         renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
         session = GameSession(renderer)
         
         # Make a move
@@ -408,20 +441,84 @@ class TestRestart:
         )
         session.handle_input(InputEvent(InputType.SELECT))
         
-        # Restart
-        session.handle_input(InputEvent(InputType.RESTART))
+        # Restart with confirmation
+        with patch('builtins.input', return_value='y'):
+            with patch('builtins.print'):
+                session.handle_input(InputEvent(InputType.RESTART))
         
         assert session.state_history == []
 
-    def test_restart_resets_cursor(self):
-        """Restart should reset cursor to initial position."""
+    def test_restart_resets_cursor_when_confirmed(self):
+        """Restart should reset cursor to initial position when confirmed."""
         renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
         session = GameSession(renderer)
         session.cursor_state = CursorState(position=Square(file="h", rank=8))
         
-        session.handle_input(InputEvent(InputType.RESTART))
+        with patch('builtins.input', return_value='y'):
+            with patch('builtins.print'):
+                session.handle_input(InputEvent(InputType.RESTART))
         
         assert session.cursor_state.position == Square(file="e", rank=2)
+
+    def test_restart_no_confirmation_needed_at_start(self):
+        """Restart should not require confirmation when no moves made."""
+        renderer = Mock()
+        session = GameSession(renderer)
+        
+        # No moves made, just restart
+        session.handle_input(InputEvent(InputType.RESTART))
+        
+        # Should reset without prompting (no input mock needed)
+        assert session.game_state.fullmove_number == 1
+        assert session.state_history == []
+
+    def test_restart_requires_confirmation_for_loaded_game(self):
+        """Restart should require confirmation for loaded games with move history."""
+        renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
+        session = GameSession(renderer)
+        
+        # Simulate a loaded game: state_history is empty but move_history has moves
+        # This is what happens when loading a saved game
+        session.game_state = session.game_state.with_move_added("e4").with_move_added("e5")
+        session.state_history = []  # Empty - no undo states from this session
+        
+        original_state = session.game_state
+        
+        # Restart with 'n' confirmation - should not reset
+        with patch('builtins.input', return_value='n'):
+            with patch('builtins.print'):
+                session.handle_input(InputEvent(InputType.RESTART))
+        
+        # Game should NOT have been reset
+        assert session.game_state is original_state
+        assert list(session.game_state.move_history) == ["e4", "e5"]
+
+    def test_restart_loaded_game_confirmed(self):
+        """Restart should reset loaded game when user confirms."""
+        renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
+        session = GameSession(renderer)
+        
+        # Simulate a loaded game with move history
+        session.game_state = session.game_state.with_move_added("e4").with_move_added("e5")
+        session.state_history = []
+        
+        # Restart with 'y' confirmation
+        with patch('builtins.input', return_value='y'):
+            with patch('builtins.print'):
+                session.handle_input(InputEvent(InputType.RESTART))
+        
+        # Game should have been reset
+        assert session.game_state.fullmove_number == 1
+        assert len(session.game_state.move_history) == 0
 
 
 class TestCancel:
@@ -638,20 +735,47 @@ class TestSANInput:
         
         assert session.game_state.active_color == Color.WHITE
 
-    def test_san_r_restarts_game(self):
-        """'r' in SAN mode should restart game."""
+    def test_san_r_restarts_game_with_confirmation(self):
+        """'r' in SAN mode should restart game after confirmation."""
         renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
         session = GameSession(renderer)
         session.input_mode = "san"
         
         # Make a move
         session.handle_san_input("e4")
         
-        # Restart
-        session.handle_san_input("r")
+        # Restart with confirmation
+        with patch('builtins.input', return_value='y'):
+            with patch('builtins.print'):
+                session.handle_san_input("r")
         
         assert session.game_state.fullmove_number == 1
         assert session.state_history == []
+
+    def test_san_r_restart_cancelled(self):
+        """'r' in SAN mode should not restart if user cancels."""
+        renderer = Mock()
+        renderer.term = Mock()
+        renderer.term.home = Mock(return_value="")
+        renderer.term.clear = Mock(return_value="")
+        session = GameSession(renderer)
+        session.input_mode = "san"
+        
+        # Make a move
+        session.handle_san_input("e4")
+        original_state = session.game_state
+        
+        # Restart but cancel
+        with patch('builtins.input', return_value='n'):
+            with patch('builtins.print'):
+                session.handle_san_input("r")
+        
+        # Should not have restarted
+        assert session.game_state is original_state
+        assert len(session.state_history) > 0
 
 
 class TestStatusMessages:

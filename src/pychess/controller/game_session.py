@@ -420,7 +420,32 @@ class GameSession:
             self.renderer.show_error("No moves to undo")
 
     def _handle_restart(self) -> None:
-        """Handle RESTART input."""
+        """Handle RESTART input.
+        
+        If moves have been made, prompts for confirmation before resetting
+        to prevent accidental loss of game progress.
+        """
+        # Check if there's any game progress to lose
+        # - state_history: moves made this session (for undo)
+        # - move_history: all moves in the game (including loaded games)
+        has_progress = self.state_history or self.game_state.move_history
+        
+        # If no moves made, restart without confirmation
+        if not has_progress:
+            self._do_restart()
+            return
+        
+        # Prompt for confirmation
+        print(self.renderer.term.home() + self.renderer.term.clear())
+        confirm = input("Are you sure you want to restart? All progress will be lost. (y/n): ")
+        
+        if confirm.lower() == 'y':
+            self._do_restart()
+        else:
+            self.status_messages = ["Restart cancelled"]
+
+    def _do_restart(self) -> None:
+        """Actually perform the restart (no confirmation)."""
         self.game_state = GameState.initial()
         self.cursor_state = CursorState.initial()
         self.state_history = []

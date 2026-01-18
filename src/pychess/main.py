@@ -160,7 +160,12 @@ def main() -> None:
                 ai_engine = AIEngine(Difficulty.MEDIUM)
             elif game_mode_str == "Hard":
                 ai_engine = AIEngine(Difficulty.HARD)
-            # "Multiplayer" or unknown = no AI engine
+            elif game_mode_str == "Multiplayer" and headers.black == "Computer":
+                # Legacy AI game from before GameMode header was added
+                # Default to Easy difficulty since we don't know the original
+                ai_engine = AIEngine(Difficulty.EASY)
+                game_mode_str = "Easy"  # Update for display
+            # "Multiplayer" with human Black = no AI engine
 
             # Create session with loaded state
             session = GameSession(renderer, ai_engine)

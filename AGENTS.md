@@ -91,6 +91,7 @@ Additional rules:
   * The plan must include a summary of the goals for the code
   * The plan must include a list of files to be modified
   * The plan must include how the changes will be tested/verified
+* Ask for assistance if working on a bug-fix and you cannot determine the root cause
 * If a post-commit fix is required, label it clearly as a fix and describe the problem
 
 ### Code Style
