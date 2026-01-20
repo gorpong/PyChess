@@ -220,3 +220,23 @@ class CursorState:
             show_hints=self.show_hints,
             pending_cancel=False
         )
+
+    def move_to(self, square: Square) -> "CursorState":
+        """Move cursor directly to a specific square.
+
+        This is used for mouse input where the cursor jumps directly
+        to the clicked position rather than moving one step at a time.
+
+        Args:
+            square: Target square to move cursor to
+
+        Returns:
+            New CursorState with cursor at the target square
+            (selection, hints, and pending_cancel preserved)
+        """
+        return CursorState(
+            position=square,
+            selected_square=self.selected_square,
+            show_hints=self.show_hints,
+            pending_cancel=self.pending_cancel
+        )

@@ -97,7 +97,12 @@ class GameSession:
             InputType.HELP: self._handle_help,
             InputType.TOGGLE_MODE: self._handle_toggle_mode,
             InputType.SHOW_HINTS: self._handle_show_hints,
+            InputType.MOUSE_CLICK: self._handle_mouse_click,
+            InputType.MOUSE_RELEASE: self._handle_mouse_release,
         }
+        
+        # Track the square where mouse was pressed (for drag detection)
+        self._mouse_press_square: Optional[Square] = None
 
     def run(self) -> None:
         """Run the main game loop.
@@ -177,7 +182,11 @@ class GameSession:
         """
         handler = self._cursor_handlers.get(event.input_type)
         if handler:
-            result = handler()
+            # Mouse handlers need the event for coordinates
+            if event.input_type in (InputType.MOUSE_CLICK, InputType.MOUSE_RELEASE):
+                result = handler(event)
+            else:
+                result = handler()
             # Only QUIT handler returns a meaningful value
             if event.input_type == InputType.QUIT:
                 return result
@@ -474,3 +483,82 @@ class GameSession:
                 self.renderer.show_error("Select a piece first, then press TAB for hints")
         else:
             self.renderer.show_error("Hints not available in this mode")
+
+    # --- Mouse handlers ---
+
+    def _handle_mouse_click(self, event: InputEvent) -> None:
+        """Handle MOUSE_CLICK input (left mouse button pressed).
+        
+        Args:
+            event: Input event containing mouse coordinates
+        """
+        # Convert terminal coordinates to board square
+        square = self.renderer.pixel_to_square(event.mouse_x, event.mouse_y)
+        
+        if square is None:
+            # Click outside board - ignore
+            return
+        
+        # Move cursor to clicked square
+        self.cursor_state = self.cursor_state.move_to(square)
+        
+        # Track where mouse was pressed (for drag detection)
+        self._mouse_press_square = square
+        
+        # Check if we have a piece selected and clicked on a different square
+        if self.cursor_state.selected_square and self.cursor_state.selected_square != square:
+            # Try to make a move
+            self._try_cursor_move(self.cursor_state.selected_square, square)
+            self._mouse_press_square = None
+            return
+        
+        # Try to select the piece at clicked square
+        piece_info = self.game_state.board.get(square)
+        
+        if piece_info:
+            piece_type, piece_color = piece_info
+            if piece_color == self.game_state.active_color:
+                # Select this piece
+                self.cursor_state = self.cursor_state.select_square()
+                self.status_messages = [
+                    f"Selected {piece_color.name} {piece_type.name}"
+                ]
+            else:
+                # Opponent's piece
+                self.renderer.show_error("Not your piece!")
+        else:
+            # Empty square - clear selection
+            self.cursor_state = self.cursor_state.clear_selection()
+
+    def _handle_mouse_release(self, event: InputEvent) -> None:
+        """Handle MOUSE_RELEASE input (left mouse button released).
+        
+        This supports drag-and-drop: if mouse was pressed on a piece
+        and released on a different square, attempt a move.
+        
+        Args:
+            event: Input event containing mouse coordinates
+        """
+        # Convert terminal coordinates to board square
+        square = self.renderer.pixel_to_square(event.mouse_x, event.mouse_y)
+        
+        if square is None:
+            # Release outside board - ignore
+            self._mouse_press_square = None
+            return
+        
+        # If no piece is selected, nothing to do
+        if not self.cursor_state.selected_square:
+            self._mouse_press_square = None
+            return
+        
+        # If released on same square as pressed, keep selection (click-to-select)
+        if square == self._mouse_press_square:
+            self._mouse_press_square = None
+            return
+        
+        # Released on different square - try to move (drag-and-drop)
+        if self.cursor_state.selected_square != square:
+            self._try_cursor_move(self.cursor_state.selected_square, square)
+        
+        self._mouse_press_square = None

@@ -1,6 +1,6 @@
-"""Input handling for keyboard and terminal interactions.
+"""Input handling for keyboard, mouse, and terminal interactions.
 
-This module processes keyboard input for cursor movement, piece selection,
+This module processes keyboard and mouse input for cursor movement, piece selection,
 and command execution.
 """
 
@@ -24,6 +24,8 @@ class InputType(Enum):
     TOGGLE_MODE = auto()  # Switch between cursor and SAN mode
     SAN_INPUT = auto()  # Text input for SAN notation
     SHOW_HINTS = auto()  # TAB key - show legal move hints
+    MOUSE_CLICK = auto()  # Left mouse button pressed
+    MOUSE_RELEASE = auto()  # Left mouse button released
     UNKNOWN = auto()
 
 
@@ -32,6 +34,8 @@ class InputEvent:
     """Represents a processed input event."""
     input_type: InputType
     data: Optional[str] = None  # For SAN_INPUT, contains the move string
+    mouse_x: Optional[int] = None  # Terminal x coordinate for mouse events
+    mouse_y: Optional[int] = None  # Terminal y coordinate for mouse events
 
 
 class InputHandler:
@@ -50,6 +54,10 @@ class InputHandler:
         Returns:
             InputEvent representing the action
         """
+        # Handle mouse events first
+        if key.name and key.name.startswith("MOUSE_"):
+            return self._process_mouse_event(key)
+
         # Handle special keys
         if key.name == "KEY_UP":
             return InputEvent(InputType.MOVE_UP)
@@ -81,6 +89,36 @@ class InputHandler:
             return InputEvent(InputType.TOGGLE_MODE)
 
         # Unknown key
+        return InputEvent(InputType.UNKNOWN)
+
+    def _process_mouse_event(self, key) -> InputEvent:
+        """Process a mouse event from blessed Terminal.
+
+        Args:
+            key: Key object with mouse event data
+
+        Returns:
+            InputEvent for the mouse action, or UNKNOWN for unsupported events
+        """
+        # Get mouse coordinates (0-indexed terminal position)
+        mouse_x, mouse_y = key.mouse_xy
+
+        # Only handle left mouse button clicks
+        # Ignore scroll wheel, right click, middle click, etc.
+        if key.name == "MOUSE_LEFT":
+            return InputEvent(
+                InputType.MOUSE_CLICK,
+                mouse_x=mouse_x,
+                mouse_y=mouse_y
+            )
+        elif key.name == "MOUSE_LEFT_RELEASED":
+            return InputEvent(
+                InputType.MOUSE_RELEASE,
+                mouse_x=mouse_x,
+                mouse_y=mouse_y
+            )
+
+        # Unsupported mouse event
         return InputEvent(InputType.UNKNOWN)
 
     def set_mode(self, mode: str) -> None:

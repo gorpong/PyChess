@@ -313,18 +313,53 @@
 
 ## Milestone 9: Mouse Support
 
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE (624 tests passing)
 
 **Goal:** Click-based piece movement using blessed mouse events.
 
 **Tasks:**
 
-- [ ] Add mouse event handling to input_handler.py
-- [ ] Implement click-to-select piece
-- [ ] Implement click-on-destination to move
-- [ ] Implement drag-and-drop (click-hold-release)
-- [ ] Share highlighting logic with keyboard mode
-- [ ] Handle mouse position to board square conversion
+- [x] Add mouse event handling to input_handler.py
+- [x] Implement click-to-select piece
+- [x] Implement click-on-destination to move
+- [x] Implement drag-and-drop (click-hold-release)
+- [x] Share highlighting logic with keyboard mode
+- [x] Handle mouse position to board square conversion
+
+**Features implemented:**
+
+- **New InputTypes:** `MOUSE_CLICK` and `MOUSE_RELEASE` for mouse event handling
+- **InputEvent extended:** Added `mouse_x` and `mouse_y` coordinates for mouse events
+- **Coordinate conversion:** `pixel_to_square()` method converts terminal coordinates to board squares
+- **Click-to-select:** Left click on own piece selects it (highlighted in cyan)
+- **Click-to-move:** With piece selected, left click on valid destination makes move
+- **Drag-and-drop:** Click on piece, drag to destination, release to complete move
+- **Error handling:** Clicking opponent's piece shows error, clicking outside board is ignored
+- **CursorState.move_to():** New method for direct cursor positioning via mouse
+- **Mouse tracking enabled:** Uses blessed's `mouse_enabled()` context manager
+
+**Mouse behavior summary:**
+
+- Click on own piece → Select piece (cursor moves to square)
+- Click on empty square → Clear selection (cursor moves to square)
+- Click on opponent's piece → Show error
+- With piece selected, click on valid destination → Make move
+- With piece selected, click on invalid destination → Show error, clear selection
+- Drag-and-drop: Press on piece, release on destination → Make move
+- Release on same square as press → Keep selection (click-to-select)
+- Click outside board → Ignored
+
+**Files created/modified:**
+
+- `src/pychess/ui/input_handler.py` - Added MOUSE_CLICK, MOUSE_RELEASE types and mouse event processing
+- `src/pychess/ui/cursor.py` - Added `move_to()` method for direct positioning
+- `src/pychess/ui/terminal.py` - Added `pixel_to_square()` and `_get_board_start_x()` methods, enabled mouse tracking
+- `src/pychess/ui/overlays.py` - Updated help text with mouse controls
+- `src/pychess/controller/game_session.py` - Added mouse click/release handlers
+- `tests/ui/test_input_handler.py` - Added 8 mouse event tests
+- `tests/ui/test_cursor.py` - Added 6 move_to() tests
+- `tests/ui/test_mouse.py` - New file with 12 coordinate conversion and integration tests
+- `tests/controller/test_game_session.py` - Added 12 mouse handling tests
 
 ---
 

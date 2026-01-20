@@ -354,12 +354,12 @@ class TerminalRenderer(Renderer):
                 self._render_input()
 
     def get_key_input(self):
-        """Get a single key press for cursor navigation.
+        """Get a single key press or mouse event for cursor navigation.
 
         Returns:
-            Key object from blessed Terminal
+            Key object from blessed Terminal (may be keyboard or mouse event)
         """
-        with self.term.cbreak():
+        with self.term.cbreak(), self.term.mouse_enabled(clicks=True, report_drag=True):
             return self.term.inkey(timeout=None)
 
     def show_error(self, message: str) -> None:
@@ -378,3 +378,57 @@ class TerminalRenderer(Renderer):
             message: Message to display
         """
         self.status_messages.append(message)
+
+    def _get_board_start_x(self) -> int:
+        """Calculate the X coordinate where the board starts.
+
+        The board is centered in the terminal, so this calculates the
+        offset based on terminal width.
+
+        Returns:
+            X coordinate of the left edge of the a-file squares
+        """
+        board_total_width = 8 * self.SQUARE_WIDTH + 10
+        center_offset = max(0, (self.term.width - board_total_width) // 2)
+        return center_offset + self.BOARD_START_X
+
+    def pixel_to_square(self, x: int, y: int) -> Optional[Square]:
+        """Convert terminal coordinates to a board square.
+
+        Args:
+            x: Terminal X coordinate (0-indexed from left)
+            y: Terminal Y coordinate (0-indexed from top)
+
+        Returns:
+            Square at the given coordinates, or None if outside the board
+        """
+        board_x = self._get_board_start_x()
+        board_y = self.BOARD_START_Y
+
+        # Check if click is within board bounds
+        board_width = 8 * self.SQUARE_WIDTH
+        board_height = 8 * self.SQUARE_HEIGHT
+
+        if x < board_x or x >= board_x + board_width:
+            return None
+        if y < board_y or y >= board_y + board_height:
+            return None
+
+        # Calculate file (a-h) from X coordinate
+        file_idx = (x - board_x) // self.SQUARE_WIDTH
+        if file_idx < 0 or file_idx > 7:
+            return None
+
+        # Calculate rank (1-8) from Y coordinate
+        # Board renders rank 8 at top (y=board_y), rank 1 at bottom
+        rank_from_top = (y - board_y) // self.SQUARE_HEIGHT
+        if rank_from_top < 0 or rank_from_top > 7:
+            return None
+
+        # Convert to actual rank (8 at top, 1 at bottom)
+        rank = 8 - rank_from_top
+
+        # Convert file index to letter
+        file = chr(ord('a') + file_idx)
+
+        return Square(file=file, rank=rank)

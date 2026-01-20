@@ -1,8 +1,75 @@
-"""Tests for cursor state management with hint functionality."""
+"""Tests for cursor state management with hint and mouse functionality."""
 
 import pytest
 from pychess.model.square import Square
 from pychess.ui.cursor import CursorState
+
+
+class TestCursorStateMouseSupport:
+    """Tests for mouse-related cursor functionality."""
+
+    def test_move_to_sets_cursor_position(self):
+        """move_to() should move cursor directly to the specified square."""
+        cursor = CursorState.initial()
+        target = Square(file="d", rank=5)
+        
+        cursor = cursor.move_to(target)
+        
+        assert cursor.position == target
+
+    def test_move_to_preserves_selection(self):
+        """move_to() should preserve the current selection."""
+        cursor = CursorState.initial()
+        cursor = cursor.select_square()  # Select e2
+        selected = cursor.selected_square
+        
+        target = Square(file="f", rank=4)
+        cursor = cursor.move_to(target)
+        
+        assert cursor.position == target
+        assert cursor.selected_square == selected
+
+    def test_move_to_preserves_hints(self):
+        """move_to() should preserve hint visibility."""
+        cursor = CursorState.initial()
+        cursor = cursor.toggle_hints()
+        assert cursor.show_hints is True
+        
+        target = Square(file="g", rank=7)
+        cursor = cursor.move_to(target)
+        
+        assert cursor.show_hints is True
+
+    def test_move_to_preserves_pending_cancel(self):
+        """move_to() should preserve pending_cancel state."""
+        cursor = CursorState.initial()
+        cursor = cursor.select_square()
+        cursor = cursor.request_cancel()
+        assert cursor.pending_cancel is True
+        
+        target = Square(file="a", rank=1)
+        cursor = cursor.move_to(target)
+        
+        assert cursor.pending_cancel is True
+
+    def test_move_to_works_for_all_squares(self):
+        """move_to() should work for any valid square."""
+        cursor = CursorState.initial()
+        
+        # Test corners
+        for file, rank in [("a", 1), ("a", 8), ("h", 1), ("h", 8)]:
+            target = Square(file=file, rank=rank)
+            new_cursor = cursor.move_to(target)
+            assert new_cursor.position == target
+
+    def test_move_to_same_square_no_change(self):
+        """move_to() to current position should return equivalent state."""
+        cursor = CursorState.initial()
+        original_pos = cursor.position
+        
+        cursor = cursor.move_to(original_pos)
+        
+        assert cursor.position == original_pos
 
 
 class TestCursorStateHints:

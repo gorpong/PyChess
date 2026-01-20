@@ -25,6 +25,10 @@ CURSOR MODE (Default):
   TAB               - Show/hide legal move hints (AI Easy/Medium only)
   /                 - Switch to SAN input mode
 
+MOUSE CONTROLS:
+  Left Click        - Select piece or make move
+  Drag & Drop       - Click piece, drag to destination, release to move
+
 SAN INPUT MODE:
   Type moves        - e.g., e4, Nf3, Bxc6, O-O, e8=Q
   /                 - Switch back to cursor mode
@@ -36,7 +40,7 @@ GLOBAL COMMANDS:
   ?                 - Show this help screen
 
 GAME MECHANICS:
-  • Use arrow keys to navigate and Enter to select/move pieces
+  • Use arrow keys or mouse to navigate and select/move pieces
   • Press TAB to show legal moves for selected piece (AI Easy/Medium)
   • Legal moves are highlighted in green when hints enabled
   • Selected piece is highlighted in cyan

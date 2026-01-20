@@ -1,8 +1,91 @@
-"""Tests for input handler with hint key support."""
+"""Tests for input handler with hint key and mouse support."""
 
 import pytest
 from unittest.mock import Mock
 from pychess.ui.input_handler import InputHandler, InputType, InputEvent
+
+
+class TestInputHandlerMouseEvents:
+    """Tests for mouse event handling."""
+
+    def test_mouse_click_input_type_exists(self):
+        """InputType enum should have MOUSE_CLICK value."""
+        assert hasattr(InputType, 'MOUSE_CLICK')
+        assert InputType.MOUSE_CLICK is not None
+
+    def test_mouse_release_input_type_exists(self):
+        """InputType enum should have MOUSE_RELEASE value."""
+        assert hasattr(InputType, 'MOUSE_RELEASE')
+        assert InputType.MOUSE_RELEASE is not None
+
+    def test_input_event_has_mouse_coords(self):
+        """InputEvent should support mouse_x and mouse_y coordinates."""
+        event = InputEvent(
+            input_type=InputType.MOUSE_CLICK,
+            data=None,
+            mouse_x=10,
+            mouse_y=20
+        )
+        assert event.mouse_x == 10
+        assert event.mouse_y == 20
+
+    def test_input_event_mouse_coords_default_to_none(self):
+        """InputEvent mouse coordinates should default to None."""
+        event = InputEvent(input_type=InputType.SELECT)
+        assert event.mouse_x is None
+        assert event.mouse_y is None
+
+    def test_process_key_detects_mouse_left_click(self):
+        """Left mouse click should produce MOUSE_CLICK event with coordinates."""
+        handler = InputHandler()
+
+        mock_key = Mock()
+        mock_key.name = "MOUSE_LEFT"
+        mock_key.mouse_xy = (15, 10)
+        mock_key.released = False
+
+        event = handler.process_key(mock_key)
+        assert event.input_type == InputType.MOUSE_CLICK
+        assert event.mouse_x == 15
+        assert event.mouse_y == 10
+
+    def test_process_key_detects_mouse_release(self):
+        """Mouse button release should produce MOUSE_RELEASE event."""
+        handler = InputHandler()
+
+        mock_key = Mock()
+        mock_key.name = "MOUSE_LEFT_RELEASED"
+        mock_key.mouse_xy = (20, 15)
+        mock_key.released = True
+
+        event = handler.process_key(mock_key)
+        assert event.input_type == InputType.MOUSE_RELEASE
+        assert event.mouse_x == 20
+        assert event.mouse_y == 15
+
+    def test_process_key_ignores_scroll_events(self):
+        """Scroll wheel events should be ignored (return UNKNOWN)."""
+        handler = InputHandler()
+
+        mock_key = Mock()
+        mock_key.name = "MOUSE_SCROLL_UP"
+        mock_key.mouse_xy = (10, 10)
+        mock_key.released = False
+
+        event = handler.process_key(mock_key)
+        assert event.input_type == InputType.UNKNOWN
+
+    def test_process_key_ignores_right_click(self):
+        """Right mouse click should be ignored (return UNKNOWN)."""
+        handler = InputHandler()
+
+        mock_key = Mock()
+        mock_key.name = "MOUSE_RIGHT"
+        mock_key.mouse_xy = (10, 10)
+        mock_key.released = False
+
+        event = handler.process_key(mock_key)
+        assert event.input_type == InputType.UNKNOWN
 
 
 class TestInputHandlerShowHints:

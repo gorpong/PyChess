@@ -844,3 +844,241 @@ class TestGetLegalMoveSquares:
         
         assert Square(file="e", rank=3) in squares
         assert Square(file="e", rank=4) in squares
+
+
+class TestMouseHandling:
+    """Tests for mouse event handling in GameSession."""
+
+    def test_mouse_click_type_in_handler_table(self):
+        """MOUSE_CLICK should be in the cursor handlers table."""
+        renderer = Mock()
+        session = GameSession(renderer)
+        
+        assert InputType.MOUSE_CLICK in session._cursor_handlers
+
+    def test_mouse_release_type_in_handler_table(self):
+        """MOUSE_RELEASE should be in the cursor handlers table."""
+        renderer = Mock()
+        session = GameSession(renderer)
+        
+        assert InputType.MOUSE_RELEASE in session._cursor_handlers
+
+    def test_mouse_click_on_own_piece_selects_it(self):
+        """Clicking on own piece should select it."""
+        renderer = Mock()
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=2))
+        session = GameSession(renderer)
+        
+        # Mouse click at coordinates that map to e2 (white pawn)
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=30
+        )
+        session.handle_input(event)
+        
+        # e2 should be selected
+        assert session.cursor_state.selected_square == Square(file="e", rank=2)
+        assert session.cursor_state.position == Square(file="e", rank=2)
+
+    def test_mouse_click_on_opponent_piece_shows_error(self):
+        """Clicking on opponent's piece should show error."""
+        renderer = Mock()
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=7))
+        renderer.show_error = Mock()
+        session = GameSession(renderer)
+        
+        # Mouse click on e7 (black pawn) when it's white's turn
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=10
+        )
+        session.handle_input(event)
+        
+        # Should show error, not select
+        renderer.show_error.assert_called_once()
+        assert session.cursor_state.selected_square is None
+
+    def test_mouse_click_on_empty_square_clears_selection(self):
+        """Clicking on empty square should clear current selection."""
+        renderer = Mock()
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=4))
+        session = GameSession(renderer)
+        
+        # First select a piece
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=2),
+            selected_square=Square(file="e", rank=2)
+        )
+        
+        # Click on empty square e4
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=20
+        )
+        session.handle_input(event)
+        
+        # Selection should be cleared, cursor moves to e4
+        assert session.cursor_state.selected_square is None
+        assert session.cursor_state.position == Square(file="e", rank=4)
+
+    def test_mouse_click_on_destination_makes_move(self):
+        """Clicking on valid destination with piece selected should make move."""
+        renderer = Mock()
+        renderer.render = Mock()
+        session = GameSession(renderer)
+        
+        # Select e2 pawn first
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=2),
+            selected_square=Square(file="e", rank=2)
+        )
+        
+        # Click on e4 to move
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=4))
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=20
+        )
+        session.handle_input(event)
+        
+        # Move should be made
+        assert "e4" in session.game_state.move_history
+        assert session.cursor_state.selected_square is None
+
+    def test_mouse_click_on_illegal_destination_shows_error(self):
+        """Clicking on illegal destination should show error."""
+        renderer = Mock()
+        renderer.show_error = Mock()
+        session = GameSession(renderer)
+        
+        # Select e2 pawn
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=2),
+            selected_square=Square(file="e", rank=2)
+        )
+        
+        # Try to move to e5 (illegal - pawn can't jump that far)
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=5))
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=15
+        )
+        session.handle_input(event)
+        
+        # Should show error
+        renderer.show_error.assert_called()
+        assert session.cursor_state.selected_square is None
+
+    def test_mouse_click_outside_board_ignored(self):
+        """Clicking outside board should be ignored."""
+        renderer = Mock()
+        renderer.pixel_to_square = Mock(return_value=None)
+        session = GameSession(renderer)
+        
+        initial_cursor = session.cursor_state
+        
+        # Click outside board
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=0,
+            mouse_y=0
+        )
+        session.handle_input(event)
+        
+        # Nothing should change
+        assert session.cursor_state == initial_cursor
+
+    def test_drag_and_drop_move(self):
+        """Click on piece, drag to destination, release should make move."""
+        renderer = Mock()
+        renderer.render = Mock()
+        session = GameSession(renderer)
+        
+        # Click on e2 (start drag)
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=2))
+        click_event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=30
+        )
+        session.handle_input(click_event)
+        
+        # e2 should be selected
+        assert session.cursor_state.selected_square == Square(file="e", rank=2)
+        
+        # Release on e4 (end drag)
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=4))
+        release_event = InputEvent(
+            InputType.MOUSE_RELEASE,
+            mouse_x=50,
+            mouse_y=20
+        )
+        session.handle_input(release_event)
+        
+        # Move should be made
+        assert "e4" in session.game_state.move_history
+
+    def test_mouse_release_without_selection_ignored(self):
+        """Mouse release without prior selection should be ignored."""
+        renderer = Mock()
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=4))
+        session = GameSession(renderer)
+        
+        initial_state = session.game_state
+        
+        # Release without any selection
+        release_event = InputEvent(
+            InputType.MOUSE_RELEASE,
+            mouse_x=50,
+            mouse_y=20
+        )
+        session.handle_input(release_event)
+        
+        # Nothing should change
+        assert session.game_state == initial_state
+
+    def test_mouse_release_on_same_square_keeps_selection(self):
+        """Releasing on the same square as click should keep selection."""
+        renderer = Mock()
+        session = GameSession(renderer)
+        
+        # Click on e2 to select
+        renderer.pixel_to_square = Mock(return_value=Square(file="e", rank=2))
+        click_event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=50,
+            mouse_y=30
+        )
+        session.handle_input(click_event)
+        
+        # Release on same square e2
+        release_event = InputEvent(
+            InputType.MOUSE_RELEASE,
+            mouse_x=50,
+            mouse_y=30
+        )
+        session.handle_input(release_event)
+        
+        # Selection should still be there (click-to-select behavior)
+        assert session.cursor_state.selected_square == Square(file="e", rank=2)
+
+    def test_mouse_click_moves_cursor_position(self):
+        """Mouse click should move cursor to clicked square."""
+        renderer = Mock()
+        renderer.pixel_to_square = Mock(return_value=Square(file="d", rank=4))
+        session = GameSession(renderer)
+        
+        event = InputEvent(
+            InputType.MOUSE_CLICK,
+            mouse_x=40,
+            mouse_y=20
+        )
+        session.handle_input(event)
+        
+        # Cursor should move to d4
+        assert session.cursor_state.position == Square(file="d", rank=4)
