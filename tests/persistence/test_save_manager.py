@@ -3,6 +3,7 @@
 import os
 import pytest
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,11 @@ from pychess.persistence.save_manager import (
 )
 from pychess.model.game_state import GameState
 from pychess.notation.pgn import PGNHeaders
+
+
+# Small delay to ensure distinct file modification times in tests
+# File mtime precision varies by filesystem (often 1 second or less)
+MTIME_DELAY = 0.01  # 10ms is sufficient for most filesystems
 
 
 class TestSanitizeGameName:
@@ -308,10 +314,11 @@ class TestSaveLimit:
         """Should enforce 10 game limit."""
         state = GameState.initial()
         
-        # Save 10 completed games
+        # Save 10 completed games with delays to ensure distinct mtimes
         for i in range(10):
             headers = PGNHeaders(result="1-0")
             manager.save_game(f"Game{i}", state, headers)
+            time.sleep(MTIME_DELAY)
         
         assert len(manager.list_games()) == 10
         
@@ -328,15 +335,17 @@ class TestSaveLimit:
         """Incomplete games should be preserved over complete ones."""
         state = GameState.initial()
         
-        # Save 5 incomplete games
+        # Save 5 incomplete games with delays to ensure distinct mtimes
         for i in range(5):
             headers = PGNHeaders(result="*")
             manager.save_game(f"Incomplete{i}", state, headers)
+            time.sleep(MTIME_DELAY)
         
-        # Save 5 complete games
+        # Save 5 complete games with delays
         for i in range(5):
             headers = PGNHeaders(result="1-0")
             manager.save_game(f"Complete{i}", state, headers)
+            time.sleep(MTIME_DELAY)
         
         # Save 11th game (complete)
         headers = PGNHeaders(result="0-1")
@@ -355,16 +364,20 @@ class TestSaveLimit:
         state = GameState.initial()
         
         # Save games in order with different results
+        # Delays ensure distinct mtimes for proper ordering
         headers = PGNHeaders(result="1-0")  # Complete
         manager.save_game("OldComplete", state, headers)
+        time.sleep(MTIME_DELAY)
         
         headers = PGNHeaders(result="*")  # Incomplete
         manager.save_game("OldIncomplete", state, headers)
+        time.sleep(MTIME_DELAY)
         
         # Fill up to 10
         for i in range(8):
             headers = PGNHeaders(result="1-0")
             manager.save_game(f"Game{i}", state, headers)
+            time.sleep(MTIME_DELAY)
         
         # Add 11th
         headers = PGNHeaders(result="1-0")
