@@ -94,9 +94,9 @@ def handle_list_games(manager: SaveManager) -> None:
         return
     
     print(f"Saved Games ({len(games)}/10):")
-    print("-" * 60)
+    print("-" * 70)
     print(f"{'Name':<20} {'White':<12} {'Black':<12} {'Result':<10} {'Moves'}")
-    print("-" * 60)
+    print("-" * 70)
     
     for game in games:
         status = game.result if game.is_complete else "(ongoing)"
@@ -108,7 +108,7 @@ def handle_list_games(manager: SaveManager) -> None:
             f"{game.move_count}"
         )
     
-    print("-" * 60)
+    print("-" * 70)
     print("\nTo load a game: pychess --load \"<name>\"")
 
 
