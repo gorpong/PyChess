@@ -171,6 +171,11 @@ def main() -> None:
             session = GameSession(renderer, ai_engine)
             session.game_state = state
             
+            # Restore elapsed time from saved game
+            # Adjust start_time so elapsed calculations are cumulative
+            if headers.total_time_seconds > 0:
+                session.start_time = time.time() - headers.total_time_seconds
+            
             mode_display = game_mode_str if game_mode_str != "Multiplayer" else "Two Players"
             session.status_messages = [
                 f"Loaded game: {game_name}",

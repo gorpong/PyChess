@@ -159,13 +159,17 @@ class GameSession:
         # Get legal moves for highlighting
         legal_move_squares = self.get_legal_move_squares()
         
+        # Calculate elapsed time
+        elapsed_seconds = int(time.time() - self.start_time)
+        
         # Render current position with cursor
         self.renderer.render(
             self.game_state,
             selected_square=self.cursor_state.selected_square,
             cursor_square=self.cursor_state.position,
             legal_moves=legal_move_squares,
-            status_messages=self.status_messages
+            status_messages=self.status_messages,
+            elapsed_seconds=elapsed_seconds
         )
         
         # Update input prompt

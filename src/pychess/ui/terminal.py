@@ -16,6 +16,34 @@ from pychess.ui.renderer import Renderer
 from pychess.ui.board_view import BoardView
 
 
+def format_elapsed_time(seconds: float) -> str:
+    """Format elapsed time in a human-readable format.
+    
+    Args:
+        seconds: Elapsed time in seconds (can be float, will be truncated)
+        
+    Returns:
+        Formatted string like "45s", "5m 12s", or "1h 23m 45s"
+    """
+    # Handle negative values
+    if seconds < 0:
+        seconds = 0
+    
+    # Truncate to integer
+    total_seconds = int(seconds)
+    
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+    
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs}s"
+    elif minutes > 0:
+        return f"{minutes}m {secs}s"
+    else:
+        return f"{secs}s"
+
+
 class TerminalRenderer(Renderer):
     """Terminal-based renderer using blessed."""
 
@@ -102,6 +130,7 @@ class TerminalRenderer(Renderer):
         cursor_square: Optional[Square] = None,
         legal_moves: Optional[set[Square]] = None,
         status_messages: Optional[list[str]] = None,
+        elapsed_seconds: Optional[int] = None,
     ) -> None:
         """Render the current game state.
 
@@ -111,6 +140,7 @@ class TerminalRenderer(Renderer):
             cursor_square: Square where cursor is positioned (if any)
             legal_moves: Set of legal destination squares to highlight (if any)
             status_messages: List of status messages to display
+            elapsed_seconds: Total elapsed game time in seconds (if any)
         """
         if status_messages:
             self.status_messages = status_messages
@@ -130,7 +160,7 @@ class TerminalRenderer(Renderer):
         )
 
         # Render status area
-        self._render_status(game_state)
+        self._render_status(game_state, elapsed_seconds)
 
         # Render input area
         self._render_input()
@@ -261,16 +291,20 @@ class TerminalRenderer(Renderer):
             label_x = file_labels_x + file_idx * self.SQUARE_WIDTH + self.SQUARE_WIDTH // 2
             print(self.term.move_xy(label_x, file_labels_y) + file)
 
-    def _render_status(self, game_state: GameState) -> None:
+    def _render_status(self, game_state: GameState, elapsed_seconds: Optional[int] = None) -> None:
         """Render the status area with game information.
 
         Args:
             game_state: Current game state
+            elapsed_seconds: Total elapsed game time in seconds (if any)
         """
         status_y = self.BOARD_START_Y + 8 * self.SQUARE_HEIGHT + 3
 
-        # Display turn
+        # Display turn and elapsed time on same line
         turn_text = f"Turn: {game_state.active_color.name}"
+        if elapsed_seconds is not None:
+            time_text = f"Time: {format_elapsed_time(elapsed_seconds)}"
+            turn_text = f"{turn_text}    {time_text}"
         print(self.term.move_xy(5, status_y) + self._safe_format(turn_text, self.term.bold))
 
         # Display move history (last 5 moves)

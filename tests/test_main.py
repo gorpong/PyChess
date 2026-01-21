@@ -1,6 +1,7 @@
 """Tests for main module game loading logic."""
 
 import pytest
+import time
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
@@ -225,3 +226,159 @@ class TestLegacyAIGameLoading:
         
         assert ai_engine is not None
         assert ai_engine.difficulty == Difficulty.HARD
+
+
+class TestGameTimerRestoration:
+    """Tests for restoring game timer when loading saved games.
+    
+    These tests verify that the main module correctly restores elapsed time
+    when loading a saved game by mocking run_cli() to return a loaded game
+    with saved time, then inspecting the resulting session's start_time.
+    """
+
+    def test_loaded_game_restores_elapsed_time(self):
+        """Loading a game with TotalTimeSeconds should adjust session.start_time.
+        
+        Mocks run_cli() to simulate loading a game that was played for 1 hour,
+        then verifies the session's start_time was adjusted so elapsed time
+        calculations will be cumulative.
+        """
+        from pychess.notation.pgn import PGNHeaders
+        from pychess.controller.game_session import GameSession
+        
+        # Create headers with 1 hour of saved time
+        saved_seconds = 3600
+        headers = PGNHeaders(
+            white="Player",
+            black="Computer",
+            game_mode="Easy",
+            total_time_seconds=saved_seconds,
+        )
+        
+        # Create a game state to return
+        state = GameState.initial()
+        
+        # Capture the session that gets created
+        captured_session = None
+        original_init = GameSession.__init__
+        
+        def capturing_init(self, *args, **kwargs):
+            nonlocal captured_session
+            original_init(self, *args, **kwargs)
+            captured_session = self
+        
+        with patch('pychess.main.run_cli') as mock_run_cli:
+            mock_run_cli.return_value = (state, headers, "TestGame")
+            
+            with patch('pychess.main.TerminalRenderer') as mock_renderer_class:
+                mock_renderer = MagicMock()
+                mock_renderer.term = MagicMock()
+                mock_renderer_class.return_value = mock_renderer
+                
+                with patch('pychess.main.SaveManager'):
+                    with patch.object(GameSession, '__init__', capturing_init):
+                        with patch.object(GameSession, 'run'):
+                            # Patch get_game_result where it's imported in main()
+                            with patch('pychess.rules.game_logic.get_game_result', return_value=None):
+                                with patch('pychess.main.prompt_save_game'):
+                                    before_main = time.time()
+                                    
+                                    from pychess.main import main
+                                    main()
+                                    
+                                    after_main = time.time()
+        
+        # Verify the session was captured
+        assert captured_session is not None
+        
+        # The elapsed time should be approximately saved_seconds
+        # because start_time was adjusted backward by saved_seconds
+        elapsed = after_main - captured_session.start_time
+        assert elapsed >= saved_seconds - 1  # Allow 1 sec tolerance
+        assert elapsed < saved_seconds + 2  # Allow 2 sec for test execution
+
+    def test_loaded_game_with_zero_time_no_adjustment(self):
+        """Loading a game with TotalTimeSeconds=0 should have start_time near current time."""
+        from pychess.notation.pgn import PGNHeaders
+        from pychess.controller.game_session import GameSession
+        
+        headers = PGNHeaders(
+            white="Player",
+            black="Computer", 
+            game_mode="Easy",
+            total_time_seconds=0,
+        )
+        state = GameState.initial()
+        
+        captured_session = None
+        original_init = GameSession.__init__
+        
+        def capturing_init(self, *args, **kwargs):
+            nonlocal captured_session
+            original_init(self, *args, **kwargs)
+            captured_session = self
+        
+        with patch('pychess.main.run_cli') as mock_run_cli:
+            mock_run_cli.return_value = (state, headers, "TestGame")
+            
+            with patch('pychess.main.TerminalRenderer') as mock_renderer_class:
+                mock_renderer = MagicMock()
+                mock_renderer.term = MagicMock()
+                mock_renderer_class.return_value = mock_renderer
+                
+                with patch('pychess.main.SaveManager'):
+                    with patch.object(GameSession, '__init__', capturing_init):
+                        with patch.object(GameSession, 'run'):
+                            with patch('pychess.rules.game_logic.get_game_result', return_value=None):
+                                with patch('pychess.main.prompt_save_game'):
+                                    before_main = time.time()
+                                    from pychess.main import main
+                                    main()
+                                    after_main = time.time()
+        
+        assert captured_session is not None
+        
+        # With zero saved time, elapsed should be near zero
+        elapsed = after_main - captured_session.start_time
+        assert elapsed < 2  # Should be very small
+
+    def test_new_game_has_fresh_start_time(self):
+        """A new game (not loaded) should have start_time at current time."""
+        from pychess.controller.game_session import GameSession
+        
+        captured_session = None
+        original_init = GameSession.__init__
+        
+        def capturing_init(self, *args, **kwargs):
+            nonlocal captured_session
+            original_init(self, *args, **kwargs)
+            captured_session = self
+        
+        with patch('pychess.main.run_cli') as mock_run_cli:
+            # Return None to indicate no loaded game
+            mock_run_cli.return_value = None
+            
+            with patch('pychess.main.TerminalRenderer') as mock_renderer_class:
+                mock_renderer = MagicMock()
+                mock_renderer.term = MagicMock()
+                mock_renderer_class.return_value = mock_renderer
+                
+                with patch('pychess.main.SaveManager'):
+                    with patch('pychess.main.select_game_mode') as mock_select:
+                        # Return multiplayer mode
+                        mock_select.return_value = ("multiplayer", None)
+                        
+                        with patch.object(GameSession, '__init__', capturing_init):
+                            with patch.object(GameSession, 'run'):
+                                with patch('pychess.rules.game_logic.get_game_result', return_value=None):
+                                    with patch('pychess.main.prompt_save_game'):
+                                        before_main = time.time()
+                                        from pychess.main import main
+                                        main()
+                                        after_main = time.time()
+        
+        assert captured_session is not None
+        
+        # New game should have elapsed time near zero
+        elapsed = after_main - captured_session.start_time
+        assert elapsed < 2  # Very small elapsed time

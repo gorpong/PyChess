@@ -32,6 +32,7 @@ class Renderer(ABC):
         cursor_square: Optional[Square] = None,
         legal_moves: Optional[set[Square]] = None,
         status_messages: Optional[list[str]] = None,
+        elapsed_seconds: Optional[int] = None,
     ) -> None:
         """Render the current game state.
 
@@ -41,6 +42,7 @@ class Renderer(ABC):
             cursor_square: Square where cursor is positioned (if any)
             legal_moves: Set of legal destination squares to highlight (if any)
             status_messages: List of status messages to display
+            elapsed_seconds: Total elapsed game time in seconds (if any)
         """
         pass
 
