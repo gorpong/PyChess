@@ -92,13 +92,13 @@ the test being wrong, so only update the test after verifying by looking at the
 code being tested to ensure there's a problem with the way the test is written.
 
 We need to work in small, reviewable steps, such that we're only implementing a
-single feature in each code development cycle. No code should be commited without
-explicit user approval, which needs to include a proposed commit message which also
-needs to be approved. Be sure to present a plan before writing any code > 15
-lines long. That plan needs to include a summar of the goals for the code, a
-complete list of files to be modified/created, details on how the changes being
-made will be tested and/or verified, and the plan needs to be approved before
-writing any code.
+single feature or single bug-fix in each code development cycle. No code should
+be commited without explicit user approval, which needs to include a proposed
+commit message which also needs to be approved. Be sure to present a plan before
+writing any code > 15 lines long. That plan needs to include a summary of the
+goals for the code, a complete list of files to be modified/created, details on
+how the changes being made will be tested and/or verified, and the plan needs to
+be approved before writing any code.
 
 If working on a bug-fix and the root cause isn't immediately obvious, it's important
 to ask for assistance rather than just making assumptions. If a post-commit fix
