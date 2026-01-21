@@ -1082,3 +1082,136 @@ class TestMouseHandling:
         
         # Cursor should move to d4
         assert session.cursor_state.position == Square(file="d", rank=4)
+
+
+class TestGameEndDisplay:
+    """Tests for game end display behavior."""
+
+    def test_check_game_end_passes_game_result_to_renderer(self):
+        """When game ends, _check_game_end should pass game_result to renderer."""
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.get_key_input = Mock(return_value='')
+        
+        session = GameSession(renderer)
+        
+        # Mock get_game_result to return white wins
+        with patch('pychess.controller.game_session.get_game_result', return_value="1-0"):
+            result = session._check_game_end()
+        
+        assert result is True
+        
+        # Verify render was called with game_result parameter
+        renderer.render.assert_called_once()
+        call_kwargs = renderer.render.call_args[1]
+        assert 'game_result' in call_kwargs
+        assert call_kwargs['game_result'] == "1-0"
+
+    def test_check_game_end_passes_elapsed_seconds_to_renderer(self):
+        """When game ends, _check_game_end should pass elapsed_seconds to renderer."""
+        import time
+        
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.get_key_input = Mock(return_value='')
+        
+        session = GameSession(renderer)
+        session.start_time = time.time() - 120  # 2 minutes ago
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value="0-1"):
+            session._check_game_end()
+        
+        call_kwargs = renderer.render.call_args[1]
+        assert 'elapsed_seconds' in call_kwargs
+        assert call_kwargs['elapsed_seconds'] >= 120
+        assert call_kwargs['elapsed_seconds'] < 125
+
+    def test_check_game_end_waits_for_keypress(self):
+        """When game ends, should wait for user to press a key using wait_for_keypress."""
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.wait_for_keypress = Mock()
+        
+        session = GameSession(renderer)
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value="1-0"):
+            session._check_game_end()
+        
+        # Should have called wait_for_keypress (not get_key_input) to wait for user
+        # This ensures mouse events don't trigger immediate exit
+        renderer.wait_for_keypress.assert_called_once()
+
+    def test_check_game_end_shows_press_any_key_message(self):
+        """When game ends, should show 'Press any key' message."""
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.get_key_input = Mock(return_value='')
+        
+        session = GameSession(renderer)
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value="1/2-1/2"):
+            session._check_game_end()
+        
+        # Should have shown press any key message
+        renderer.show_message.assert_called()
+        call_args = renderer.show_message.call_args[0][0]
+        assert "Press any key" in call_args or "press any key" in call_args.lower()
+
+    def test_check_game_end_returns_false_when_game_ongoing(self):
+        """When game is not over, _check_game_end should return False."""
+        renderer = Mock()
+        session = GameSession(renderer)
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value=None):
+            result = session._check_game_end()
+        
+        assert result is False
+        # render should not be called when game is not over
+        renderer.render.assert_not_called()
+
+    def test_check_game_end_adds_white_wins_to_status(self):
+        """When white wins, should add appropriate message to status."""
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.get_key_input = Mock(return_value='')
+        
+        session = GameSession(renderer)
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value="1-0"):
+            session._check_game_end()
+        
+        # Status messages should contain white wins message
+        assert any("White wins" in msg or "White Wins" in msg for msg in session.status_messages)
+
+    def test_check_game_end_adds_black_wins_to_status(self):
+        """When black wins, should add appropriate message to status."""
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.get_key_input = Mock(return_value='')
+        
+        session = GameSession(renderer)
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value="0-1"):
+            session._check_game_end()
+        
+        assert any("Black wins" in msg or "Black Wins" in msg for msg in session.status_messages)
+
+    def test_check_game_end_adds_draw_to_status(self):
+        """When game is a draw, should add appropriate message to status."""
+        renderer = Mock()
+        renderer.render = Mock()
+        renderer.show_message = Mock()
+        renderer.get_key_input = Mock(return_value='')
+        
+        session = GameSession(renderer)
+        
+        with patch('pychess.controller.game_session.get_game_result', return_value="1/2-1/2"):
+            session._check_game_end()
+        
+        assert any("Draw" in msg or "draw" in msg.lower() for msg in session.status_messages)

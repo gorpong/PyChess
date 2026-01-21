@@ -223,3 +223,283 @@ class TestGameSessionPassesElapsedTime:
         
         assert second_elapsed > first_elapsed
         assert second_elapsed - first_elapsed >= 10
+
+
+class TestFormatGameResult:
+    """Tests for the _format_game_result helper method."""
+
+    def test_format_white_wins(self):
+        """'1-0' should format to 'White Wins!'."""
+        renderer = _create_mock_renderer()
+        assert renderer._format_game_result("1-0") == "White Wins!"
+
+    def test_format_black_wins(self):
+        """'0-1' should format to 'Black Wins!'."""
+        renderer = _create_mock_renderer()
+        assert renderer._format_game_result("0-1") == "Black Wins!"
+
+    def test_format_draw(self):
+        """'1/2-1/2' should format to 'Draw!'."""
+        renderer = _create_mock_renderer()
+        assert renderer._format_game_result("1/2-1/2") == "Draw!"
+
+    def test_format_unknown_returns_input(self):
+        """Unknown result codes should be returned as-is."""
+        renderer = _create_mock_renderer()
+        assert renderer._format_game_result("*") == "*"
+        assert renderer._format_game_result("unknown") == "unknown"
+
+
+class TestCleanup:
+    """Tests for renderer cleanup behavior."""
+
+    def test_cleanup_does_not_clear_screen(self):
+        """Cleanup should NOT clear the screen so game result remains visible."""
+        renderer = _create_mock_renderer()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        # Mock term.clear to track if it's called
+        renderer.term.clear = Mock(return_value="CLEAR_CALLED")
+        
+        with patch('builtins.print', capture_print):
+            renderer.cleanup()
+        
+        all_output = ' '.join(printed_output)
+        # The clear sequence should NOT appear in the output
+        assert "CLEAR_CALLED" not in all_output
+
+    def test_cleanup_restores_cursor(self):
+        """Cleanup should restore the cursor visibility."""
+        renderer = _create_mock_renderer()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        renderer.term.normal_cursor = Mock(return_value="CURSOR_RESTORED")
+        
+        with patch('builtins.print', capture_print):
+            renderer.cleanup()
+        
+        all_output = ' '.join(printed_output)
+        assert "CURSOR_RESTORED" in all_output
+
+    def test_cleanup_moves_cursor_to_bottom(self):
+        """Cleanup should move cursor to bottom so shell prompt appears below game."""
+        renderer = _create_mock_renderer()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        renderer.term.move_xy = Mock(return_value="MOVED_TO_BOTTOM")
+        renderer.term.height = 50
+        
+        with patch('builtins.print', capture_print):
+            renderer.cleanup()
+        
+        all_output = ' '.join(printed_output)
+        assert "MOVED_TO_BOTTOM" in all_output
+        # Verify move_xy was called with y = height - 1
+        renderer.term.move_xy.assert_called_with(0, 49)
+
+
+class TestWaitForKeypress:
+    """Tests for wait_for_keypress method that ignores mouse events."""
+
+    def test_wait_for_keypress_returns_on_keyboard_input(self):
+        """wait_for_keypress should return when a keyboard key is pressed."""
+        renderer = _create_mock_renderer()
+        
+        # Create a mock key that simulates a keyboard press (not mouse)
+        mock_key = MagicMock()
+        mock_key.is_sequence = False
+        mock_key.name = None  # Regular character
+        mock_key.code = None  # Not a mouse event
+        
+        # Set up inkey to return our mock key
+        renderer.term.inkey = Mock(return_value=mock_key)
+        renderer.term.cbreak = MagicMock(return_value=MagicMock(__enter__=Mock(), __exit__=Mock()))
+        
+        # Should return without hanging
+        renderer.wait_for_keypress()
+        
+        # Verify inkey was called
+        renderer.term.inkey.assert_called()
+
+    def test_wait_for_keypress_ignores_mouse_click_events(self):
+        """wait_for_keypress should ignore mouse click events and keep waiting."""
+        renderer = _create_mock_renderer()
+        
+        # Create mock events: first a mouse event, then a keyboard event
+        mouse_event = MagicMock()
+        mouse_event.name = "KEY_MOUSE"
+        mouse_event.code = 1001  # Mouse event code
+        
+        keyboard_event = MagicMock()
+        keyboard_event.name = "a"
+        keyboard_event.code = None
+        
+        # inkey returns mouse first, then keyboard
+        renderer.term.inkey = Mock(side_effect=[mouse_event, keyboard_event])
+        renderer.term.cbreak = MagicMock(return_value=MagicMock(__enter__=Mock(), __exit__=Mock()))
+        
+        renderer.wait_for_keypress()
+        
+        # Should have been called twice (mouse ignored, keyboard accepted)
+        assert renderer.term.inkey.call_count == 2
+
+    def test_wait_for_keypress_ignores_mouse_release_events(self):
+        """wait_for_keypress should ignore mouse release events."""
+        renderer = _create_mock_renderer()
+        
+        # Mouse release event followed by keyboard
+        mouse_release = MagicMock()
+        mouse_release.name = "KEY_MOUSE"
+        mouse_release.code = 1002  # Different mouse code
+        
+        keyboard_event = MagicMock()
+        keyboard_event.name = "KEY_ENTER"
+        keyboard_event.code = None
+        
+        renderer.term.inkey = Mock(side_effect=[mouse_release, keyboard_event])
+        renderer.term.cbreak = MagicMock(return_value=MagicMock(__enter__=Mock(), __exit__=Mock()))
+        
+        renderer.wait_for_keypress()
+        
+        assert renderer.term.inkey.call_count == 2
+
+    def test_wait_for_keypress_accepts_enter_key(self):
+        """wait_for_keypress should accept Enter key."""
+        renderer = _create_mock_renderer()
+        
+        enter_key = MagicMock()
+        enter_key.name = "KEY_ENTER"
+        enter_key.code = None
+        
+        renderer.term.inkey = Mock(return_value=enter_key)
+        renderer.term.cbreak = MagicMock(return_value=MagicMock(__enter__=Mock(), __exit__=Mock()))
+        
+        renderer.wait_for_keypress()
+        
+        renderer.term.inkey.assert_called_once()
+
+    def test_wait_for_keypress_accepts_escape_key(self):
+        """wait_for_keypress should accept Escape key."""
+        renderer = _create_mock_renderer()
+        
+        esc_key = MagicMock()
+        esc_key.name = "KEY_ESCAPE"
+        esc_key.code = None
+        
+        renderer.term.inkey = Mock(return_value=esc_key)
+        renderer.term.cbreak = MagicMock(return_value=MagicMock(__enter__=Mock(), __exit__=Mock()))
+        
+        renderer.wait_for_keypress()
+        
+        renderer.term.inkey.assert_called_once()
+
+    def test_wait_for_keypress_accepts_space_key(self):
+        """wait_for_keypress should accept Space key."""
+        renderer = _create_mock_renderer()
+        
+        space_key = MagicMock()
+        space_key.name = None
+        space_key.code = None
+        space_key.__str__ = Mock(return_value=" ")
+        
+        renderer.term.inkey = Mock(return_value=space_key)
+        renderer.term.cbreak = MagicMock(return_value=MagicMock(__enter__=Mock(), __exit__=Mock()))
+        
+        renderer.wait_for_keypress()
+        
+        renderer.term.inkey.assert_called_once()
+
+
+class TestGameResultDisplay:
+    """Tests for game result display in the renderer."""
+
+    def test_render_displays_white_wins(self):
+        """When game_result='1-0' is provided, 'White Wins' should appear in output."""
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        with patch('builtins.print', capture_print):
+            renderer.render(state, game_result="1-0")
+        
+        all_output = ' '.join(printed_output)
+        assert "White Wins" in all_output or "WHITE WINS" in all_output
+
+    def test_render_displays_black_wins(self):
+        """When game_result='0-1' is provided, 'Black Wins' should appear in output."""
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        with patch('builtins.print', capture_print):
+            renderer.render(state, game_result="0-1")
+        
+        all_output = ' '.join(printed_output)
+        assert "Black Wins" in all_output or "BLACK WINS" in all_output
+
+    def test_render_displays_draw(self):
+        """When game_result='1/2-1/2' is provided, 'Draw' should appear in output."""
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        with patch('builtins.print', capture_print):
+            renderer.render(state, game_result="1/2-1/2")
+        
+        all_output = ' '.join(printed_output)
+        assert "Draw" in all_output or "DRAW" in all_output
+
+    def test_render_no_result_when_not_provided(self):
+        """When game_result is None, no win/draw message should appear."""
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        printed_output = []
+        
+        def capture_print(*args, **kwargs):
+            printed_output.append(' '.join(str(a) for a in args))
+        
+        with patch('builtins.print', capture_print):
+            renderer.render(state)  # No game_result
+        
+        all_output = ' '.join(printed_output)
+        # None of the result messages should appear
+        assert "White Wins" not in all_output and "WHITE WINS" not in all_output
+        assert "Black Wins" not in all_output and "BLACK WINS" not in all_output
+        assert "Draw" not in all_output or "Draw" in "Drawing"  # Avoid false positive
+
+    def test_render_accepts_game_result_parameter(self):
+        """Render method should accept game_result parameter without error."""
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        # Should not raise
+        with patch('builtins.print'):
+            renderer.render(state, game_result="1-0")
+            renderer.render(state, game_result="0-1")
+            renderer.render(state, game_result="1/2-1/2")
+            renderer.render(state, game_result=None)

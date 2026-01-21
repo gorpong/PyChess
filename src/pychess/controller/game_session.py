@@ -147,10 +147,20 @@ class GameSession:
             else:
                 self.status_messages.append("Game Over: Draw!")
             
-            # Render final position
-            self.renderer.render(self.game_state, status_messages=self.status_messages)
+            # Calculate elapsed time for final display
+            elapsed_seconds = int(time.time() - self.start_time)
+            
+            # Render final position with game result prominently displayed
+            self.renderer.render(
+                self.game_state,
+                status_messages=self.status_messages,
+                elapsed_seconds=elapsed_seconds,
+                game_result=result
+            )
             self.renderer.show_message("Press any key to exit...")
-            self.renderer.get_key_input()
+            # Use wait_for_keypress to ignore mouse events
+            # This prevents residual mouse release events from triggering exit
+            self.renderer.wait_for_keypress()
             return True
         return False
 

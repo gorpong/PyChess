@@ -83,6 +83,24 @@ class TerminalRenderer(Renderer):
         except (TypeError, AttributeError):
             return text
 
+    def _format_game_result(self, result: str) -> str:
+        """Format a game result code into a human-readable string.
+
+        Args:
+            result: Result code ("1-0", "0-1", "1/2-1/2")
+
+        Returns:
+            Human-readable result string
+        """
+        if result == "1-0":
+            return "White Wins!"
+        elif result == "0-1":
+            return "Black Wins!"
+        elif result == "1/2-1/2":
+            return "Draw!"
+        else:
+            return result
+
     def initialize(self) -> None:
         """Initialize the renderer and set up the display."""
         # Check terminal size
@@ -95,12 +113,17 @@ class TerminalRenderer(Renderer):
         print(self.term.hide_cursor(), end="", flush=True)
 
     def cleanup(self) -> None:
-        """Clean up resources and restore terminal state."""
+        """Clean up resources and restore terminal state.
+        
+        Note: We intentionally do NOT clear the screen here so that
+        the final game state (including any game result) remains visible
+        after the program exits.
+        """
         # Show cursor
         print(self.term.normal_cursor(), end="", flush=True)
-
-        # Clear screen
-        print(self.term.clear())
+        
+        # Move cursor to bottom of screen so prompt appears below the game
+        print(self.term.move_xy(0, self.term.height - 1))
 
     def check_terminal_size(self) -> tuple[int, int]:
         """Check if terminal size meets minimum requirements.
@@ -131,6 +154,7 @@ class TerminalRenderer(Renderer):
         legal_moves: Optional[set[Square]] = None,
         status_messages: Optional[list[str]] = None,
         elapsed_seconds: Optional[int] = None,
+        game_result: Optional[str] = None,
     ) -> None:
         """Render the current game state.
 
@@ -141,6 +165,7 @@ class TerminalRenderer(Renderer):
             legal_moves: Set of legal destination squares to highlight (if any)
             status_messages: List of status messages to display
             elapsed_seconds: Total elapsed game time in seconds (if any)
+            game_result: Game result string ("1-0", "0-1", "1/2-1/2") if game ended
         """
         if status_messages:
             self.status_messages = status_messages
@@ -156,7 +181,8 @@ class TerminalRenderer(Renderer):
             game_state.board,
             selected_square,
             cursor_square,
-            legal_moves
+            legal_moves,
+            game_result
         )
 
         # Render status area
@@ -174,6 +200,7 @@ class TerminalRenderer(Renderer):
         selected_square: Optional[Square],
         cursor_square: Optional[Square],
         legal_moves: set[Square],
+        game_result: Optional[str] = None,
     ) -> None:
         """Render the chess board with pieces and highlighting.
 
@@ -182,6 +209,7 @@ class TerminalRenderer(Renderer):
             selected_square: Currently selected square
             cursor_square: Square where cursor is positioned
             legal_moves: Set of legal destination squares
+            game_result: Game result string if game ended
         """
         files = "abcdefgh"
 
@@ -193,6 +221,19 @@ class TerminalRenderer(Renderer):
         title = "PyChess - Terminal Chess Game"
         title_x = center_x + (board_total_width - len(title)) // 2
         print(self.term.move_xy(title_x, 1) + self._safe_format(title, self.term.bold))
+
+        # Draw game result in prominent position (top-left area)
+        if game_result:
+            result_text = self._format_game_result(game_result)
+            # Display in the left margin area, vertically centered with board
+            result_x = 2
+            result_y = self.BOARD_START_Y + 4  # Roughly middle of board
+            
+            # Draw a box around the result
+            box_width = len(result_text) + 4
+            print(self.term.move_xy(result_x, result_y - 1) + "+" + "-" * (box_width - 2) + "+")
+            print(self.term.move_xy(result_x, result_y) + "| " + self._safe_format(result_text, self.term.bold) + " |")
+            print(self.term.move_xy(result_x, result_y + 1) + "+" + "-" * (box_width - 2) + "+")
 
         # Draw top border
         border_x = center_x + self.BOARD_START_X - 2
@@ -395,6 +436,23 @@ class TerminalRenderer(Renderer):
         """
         with self.term.cbreak(), self.term.mouse_enabled(clicks=True, report_drag=True):
             return self.term.inkey(timeout=None)
+
+    def wait_for_keypress(self) -> None:
+        """Wait for a keyboard press, ignoring mouse events.
+        
+        This is used for "Press any key to continue" prompts where
+        we don't want residual mouse events to trigger continuation.
+        """
+        with self.term.cbreak():
+            while True:
+                key = self.term.inkey(timeout=None)
+                
+                # Ignore mouse events (they have name "KEY_MOUSE" in blessed)
+                if key.name == "KEY_MOUSE":
+                    continue
+                
+                # Any keyboard input is accepted
+                return
 
     def show_error(self, message: str) -> None:
         """Display an error message to the user.
