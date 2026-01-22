@@ -336,6 +336,10 @@ def _parse_regular_move(game_state: GameState, san: str) -> Move:
     if from_square is None:
         raise ValueError(f"No legal move for SAN: {san}")
 
+    # Check if this is a King move that should use castling notation
+    if piece_type == Piece.KING:
+        _check_for_castling_notation(game_state, from_square, to_square)
+
     # Determine if it's en passant
     is_en_passant = (
         piece_type == Piece.PAWN
@@ -355,6 +359,62 @@ def _parse_regular_move(game_state: GameState, san: str) -> Move:
         is_capture=actual_capture,
         is_en_passant=is_en_passant
     )
+
+
+def _check_for_castling_notation(
+    game_state: GameState,
+    from_square: Square,
+    to_square: Square
+) -> None:
+    """Check if a King move should use castling notation instead.
+    
+    In SAN, castling must be written as O-O or O-O-O, not as a King move
+    like Kg1 or Kc1. This function raises an error if the user is trying
+    to castle using King move notation.
+    
+    Args:
+        game_state: Current game state
+        from_square: Source square of the King
+        to_square: Destination square
+        
+    Raises:
+        ValueError: If the move is a castling move written as Kg1/Kc1/Kg8/Kc8
+    """
+    color = game_state.active_color
+    
+    # Determine the expected King start position and castling destinations
+    if color == Color.WHITE:
+        king_start = "e1"
+        kingside_dest = "g1"
+        queenside_dest = "c1"
+    else:
+        king_start = "e8"
+        kingside_dest = "g8"
+        queenside_dest = "c8"
+    
+    # If King is not on starting square, this can't be castling
+    if from_square.to_algebraic() != king_start:
+        return
+    
+    dest = to_square.to_algebraic()
+    
+    # Check if this is a castling destination
+    if dest == kingside_dest or dest == queenside_dest:
+        # Check if there's a legal castling move to this square
+        all_legal = get_legal_moves(game_state)
+        for move in all_legal:
+            if (move.from_square == from_square and 
+                move.to_square == to_square and 
+                move.is_castling):
+                # This is a castling move - user should use O-O or O-O-O
+                if dest == kingside_dest:
+                    raise ValueError(
+                        f"Illegal move: Use O-O for kingside castling, not K{dest}"
+                    )
+                else:
+                    raise ValueError(
+                        f"Illegal move: Use O-O-O for queenside castling, not K{dest}"
+                    )
 
 
 def _find_source_square(

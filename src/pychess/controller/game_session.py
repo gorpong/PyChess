@@ -255,8 +255,8 @@ class GameSession:
             # Execute the move
             self._execute_move(move)
             
-        except ValueError:
-            self.renderer.show_error(f"Invalid move: {user_input}")
+        except ValueError as e:
+            self.renderer.show_error(str(e))
         
         return False
 

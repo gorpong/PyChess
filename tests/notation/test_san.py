@@ -583,6 +583,101 @@ class TestSanToMoveCastling:
         assert move.is_castling
 
 
+class TestSanToMoveCastlingByKingMove:
+    """Tests for rejecting King moves that should use castling notation.
+    
+    In SAN, castling must be written as O-O or O-O-O, not as a King move
+    like Kg1 or Kc1. These tests verify that such moves are rejected with
+    a helpful error message.
+    """
+
+    def test_kg1_rejected_when_castling_available_for_white(self):
+        """'Kg1' should be rejected when white can castle kingside."""
+        board = (Board.empty()
+                 .set(Square.from_algebraic("e1"), Piece.KING, Color.WHITE)
+                 .set(Square.from_algebraic("h1"), Piece.ROOK, Color.WHITE)
+                 .set(Square.from_algebraic("e8"), Piece.KING, Color.BLACK))
+        state = GameState.initial().with_board(board)
+
+        with pytest.raises(ValueError) as exc_info:
+            san_to_move(state, "Kg1")
+        
+        assert "O-O" in str(exc_info.value)
+
+    def test_kc1_rejected_when_queenside_castling_available_for_white(self):
+        """'Kc1' should be rejected when white can castle queenside."""
+        board = (Board.empty()
+                 .set(Square.from_algebraic("e1"), Piece.KING, Color.WHITE)
+                 .set(Square.from_algebraic("a1"), Piece.ROOK, Color.WHITE)
+                 .set(Square.from_algebraic("e8"), Piece.KING, Color.BLACK))
+        state = GameState.initial().with_board(board)
+
+        with pytest.raises(ValueError) as exc_info:
+            san_to_move(state, "Kc1")
+        
+        assert "O-O-O" in str(exc_info.value)
+
+    def test_kg8_rejected_when_castling_available_for_black(self):
+        """'Kg8' should be rejected when black can castle kingside."""
+        board = (Board.empty()
+                 .set(Square.from_algebraic("e8"), Piece.KING, Color.BLACK)
+                 .set(Square.from_algebraic("h8"), Piece.ROOK, Color.BLACK)
+                 .set(Square.from_algebraic("e1"), Piece.KING, Color.WHITE))
+        state = GameState.initial().with_board(board).with_turn(Color.BLACK)
+
+        with pytest.raises(ValueError) as exc_info:
+            san_to_move(state, "Kg8")
+        
+        assert "O-O" in str(exc_info.value)
+
+    def test_kc8_rejected_when_queenside_castling_available_for_black(self):
+        """'Kc8' should be rejected when black can castle queenside."""
+        board = (Board.empty()
+                 .set(Square.from_algebraic("e8"), Piece.KING, Color.BLACK)
+                 .set(Square.from_algebraic("a8"), Piece.ROOK, Color.BLACK)
+                 .set(Square.from_algebraic("e1"), Piece.KING, Color.WHITE))
+        state = GameState.initial().with_board(board).with_turn(Color.BLACK)
+
+        with pytest.raises(ValueError) as exc_info:
+            san_to_move(state, "Kc8")
+        
+        assert "O-O-O" in str(exc_info.value)
+
+    def test_regular_king_move_still_allowed(self):
+        """Regular King moves (not castling squares) should still be allowed."""
+        board = (Board.empty()
+                 .set(Square.from_algebraic("e1"), Piece.KING, Color.WHITE)
+                 .set(Square.from_algebraic("h1"), Piece.ROOK, Color.WHITE)
+                 .set(Square.from_algebraic("e8"), Piece.KING, Color.BLACK))
+        state = GameState.initial().with_board(board)
+
+        # Kf1 should work (not a castling destination)
+        move = san_to_move(state, "Kf1")
+        
+        assert move.from_square == Square.from_algebraic("e1")
+        assert move.to_square == Square.from_algebraic("f1")
+        assert not move.is_castling
+
+    def test_kg1_allowed_when_castling_not_available(self):
+        """'Kg1' should be allowed when castling rights have been lost."""
+        board = (Board.empty()
+                 .set(Square.from_algebraic("f1"), Piece.KING, Color.WHITE)
+                 .set(Square.from_algebraic("e8"), Piece.KING, Color.BLACK))
+        # King not on e1, so this is just a regular King move to g1
+        castling = CastlingRights(
+            white_kingside=False, white_queenside=False,
+            black_kingside=True, black_queenside=True
+        )
+        state = GameState.initial().with_board(board).with_castling(castling)
+
+        # Kg1 should work since King is on f1, not e1
+        move = san_to_move(state, "Kg1")
+        
+        assert move.from_square == Square.from_algebraic("f1")
+        assert move.to_square == Square.from_algebraic("g1")
+        assert not move.is_castling
+
+
 class TestSanToMoveCheckAnnotations:
     """Tests for parsing check/mate annotations."""
 
