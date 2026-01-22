@@ -434,13 +434,28 @@ class GameSession:
         return confirm.lower() == 'y'
 
     def _handle_undo(self) -> None:
-        """Handle UNDO input."""
-        if self.state_history:
-            self.game_state = self.state_history.pop()
-            self.cursor_state = self.cursor_state.clear_selection()
-            self.status_messages = ["Move undone"]
-        else:
+        """Handle UNDO input.
+        
+        In AI mode, undo undoes both the AI's move and the player's move
+        so the player can retry their turn. In multiplayer mode, undo
+        undoes only a single move.
+        """
+        if not self.state_history:
             self.renderer.show_error("No moves to undo")
+            return
+        
+        # In AI mode, undo both AI's move and player's move
+        if self.ai_engine is not None and len(self.state_history) >= 2:
+            # Pop twice: first the AI's move state, then player's move state
+            self.state_history.pop()  # AI's move
+            self.game_state = self.state_history.pop()  # Player's move
+            self.status_messages = ["Both moves undone - your turn again"]
+        else:
+            # Multiplayer mode or only one state in history
+            self.game_state = self.state_history.pop()
+            self.status_messages = ["Move undone"]
+        
+        self.cursor_state = self.cursor_state.clear_selection()
 
     def _handle_restart(self) -> None:
         """Handle RESTART input.

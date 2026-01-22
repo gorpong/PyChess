@@ -373,6 +373,83 @@ class TestUndo:
         
         renderer.show_error.assert_called_once_with("No moves to undo")
 
+    def test_undo_in_ai_mode_undoes_both_moves(self):
+        """In AI mode, undo should undo both AI's move and player's move."""
+        renderer = Mock()
+        ai_engine = AIEngine(Difficulty.EASY, seed=42)
+        session = GameSession(renderer, ai_engine)
+        initial_state = session.game_state
+        
+        # Player moves e2-e4, AI will respond
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=4),
+            selected_square=Square(file="e", rank=2)
+        )
+        session.handle_input(InputEvent(InputType.SELECT))
+        
+        # After move: state_history has 2 entries (player move + AI move)
+        # and it's white's turn again
+        assert len(session.state_history) == 2
+        assert session.game_state.active_color == Color.WHITE
+        
+        # Undo should restore to initial state (before player's move)
+        session.handle_input(InputEvent(InputType.UNDO))
+        
+        # Should be back at initial state
+        assert session.game_state is initial_state
+        assert session.state_history == []
+        assert session.game_state.active_color == Color.WHITE
+
+    def test_undo_in_ai_mode_with_single_move_undoes_one(self):
+        """In AI mode with only one state in history, undo should undo just that one."""
+        renderer = Mock()
+        ai_engine = AIEngine(Difficulty.EASY, seed=42)
+        session = GameSession(renderer, ai_engine)
+        
+        # Manually set up a state where only one move has been made
+        # This simulates edge case where AI hasn't moved yet
+        initial_state = session.game_state
+        session.state_history = [initial_state]
+        session.game_state = initial_state.with_move_added("e4")
+        
+        # Undo should restore to initial state
+        session.handle_input(InputEvent(InputType.UNDO))
+        
+        assert session.game_state is initial_state
+        assert session.state_history == []
+
+    def test_undo_in_multiplayer_undoes_single_move(self):
+        """In multiplayer mode, undo should undo only one move."""
+        renderer = Mock()
+        session = GameSession(renderer, ai_engine=None)
+        initial_state = session.game_state
+        
+        # Player 1 (white) moves e2-e4
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=4),
+            selected_square=Square(file="e", rank=2)
+        )
+        session.handle_input(InputEvent(InputType.SELECT))
+        after_first_move = session.game_state
+        
+        # Player 2 (black) moves e7-e5
+        session.cursor_state = CursorState(
+            position=Square(file="e", rank=5),
+            selected_square=Square(file="e", rank=7)
+        )
+        session.handle_input(InputEvent(InputType.SELECT))
+        
+        # State history should have 2 entries
+        assert len(session.state_history) == 2
+        
+        # Undo should only undo black's move
+        session.handle_input(InputEvent(InputType.UNDO))
+        
+        # Should be at the state after white's move
+        assert session.game_state is after_first_move
+        assert len(session.state_history) == 1
+        assert session.game_state.active_color == Color.BLACK
+
 
 class TestRestart:
     """Tests for restart functionality."""
