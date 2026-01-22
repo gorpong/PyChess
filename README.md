@@ -19,7 +19,116 @@ A fully-featured, beautiful terminal-based chess game written in Python. Play ch
 
 ## Installation
 
-### Requirements
+### Pre-Requisite (e.g., Python and Git on Windows, Linux should have pre-installed)
+
+These instructions are for **Windows users who just want to play the game**.
+
+You only need to do this setup **once**.
+
+---
+
+### Step 1: Install Python for Windows
+
+1. Go to:
+   👉 [https://www.python.org/downloads/windows/](https://www.python.org/downloads/windows/)
+
+2. Download **Python 3.12 (64-bit)**
+
+3. Run the installer and **IMPORTANT**:
+
+   - ✅ Check **“Add Python to PATH”**
+   - Click **Install Now**
+
+4. After installation, open **Command Prompt** and verify:
+
+   ```bat
+   python --version
+   ```
+
+   You should see something like:
+
+   ```text
+   Python 3.12.x
+   ```
+
+---
+
+### Step 2: Install Git for Windows
+
+1. Go to:
+   👉 [https://git-scm.com/download/win](https://git-scm.com/download/win)
+
+2. Run the installer
+
+   - Default options are fine
+   - This gives you **Git Bash** and `git` in Command Prompt
+
+3. Verify installation:
+
+   ```bat
+   git --version
+   ```
+
+---
+
+### Step 3: Download the Game
+
+Open **Command Prompt** (or Git Bash) and run:
+
+```bat
+git clone https://github.com/gorpong/PyChess
+cd PyChess
+```
+
+---
+
+### Step 4: Install the Game (One-Time)
+
+This installs PyChess like a normal program.
+
+```bat
+python -m pip install .
+```
+
+That’s it! 🎉
+The `pychess` command is now available system-wide.
+
+---
+
+### Step 5: Play the Game
+
+From **any Command Prompt**:
+
+```bat
+pychess
+```
+
+The game menu will appear immediately.
+
+```bat
+pychess --help
+```
+
+Will show you to command line options for launching saved games, etc.
+
+---
+
+### ❓ Troubleshooting (Windows)
+
+**If `pychess` is not found:**
+
+```bat
+python -m pip install --upgrade pip
+python -m pip install .
+```
+
+**If Unicode chess pieces look wrong:**
+
+- Use **Windows Terminal** (recommended)
+- Or increase font size
+- Or try a font like *Cascadia Mono* or *Consolas*
+
+## Requirements (Linux/UNIX and Windows)
 
 - Python 3.12 or higher
 - Terminal with Unicode support (most modern terminals)
@@ -29,14 +138,11 @@ A fully-featured, beautiful terminal-based chess game written in Python. Play ch
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/gorpong/PyChess
 cd pychess
 
-# Install dependencies
-pip install -e .
-
-# Or install with development dependencies
-pip install -e ".[dev]"
+# Install dependencies and add `pychess` to path
+pip install .
 ```
 
 ## Quick Start
@@ -45,12 +151,13 @@ pip install -e ".[dev]"
 # Start a new game (shows game mode selection menu)
 pychess
 
-# Future commands (coming soon)
+# Other ways to launch:
 pychess --list-games       # List saved games
 pychess --load "Game 1"    # Load a saved game
 ```
 
 When you start the game, you'll see a menu:
+
 1. **Multiplayer** - Two players on the same computer
 2. **vs AI - Easy** - Random moves
 3. **vs AI - Medium** - Material-based strategy
@@ -84,16 +191,19 @@ PyChess uses Unicode chess symbols for a beautiful display:
 
 ## Standard Algebraic Notation (SAN)
 
-PyChess uses Standard Algebraic Notation, the official notation system for recording chess games.
+PyChess uses Standard Algebraic Notation, the official notation system for
+recording chess games.
 
 ### Basic Moves
 
 **Pawn Moves:**
+
 - `e4` - Move pawn to e4
 - `d5` - Move pawn to d5
 - `e8=Q` - Promote pawn to Queen on e8
 
 **Piece Moves:**
+
 - `Nf3` - Move Knight to f3
 - `Bb5` - Move Bishop to b5
 - `Qd4` - Move Queen to d4
@@ -111,10 +221,12 @@ Use `x` to indicate a capture:
 ### Special Moves
 
 **Castling:**
+
 - `O-O` - Kingside castling (short castling)
 - `O-O-O` - Queenside castling (long castling)
 
 **Promotion:**
+
 - `e8=Q` - Promote to Queen
 - `e8=R` - Promote to Rook
 - `e8=B` - Promote to Bishop
@@ -122,6 +234,7 @@ Use `x` to indicate a capture:
 - `exd8=Q` - Capture and promote to Queen
 
 **En Passant:**
+
 - `exd6` - Pawn captures en passant (automatically detected)
 
 ### Disambiguation
@@ -144,6 +257,7 @@ The game automatically adds check and checkmate symbols:
 ### Cursor Mode (Default)
 
 Use arrow keys to navigate:
+
 - **Arrow Keys** - Move cursor around the board
 - **Enter** - Select piece / Make move
 - **Escape** - Cancel selection
@@ -152,6 +266,7 @@ Use arrow keys to navigate:
 ### SAN Input Mode
 
 Type moves directly:
+
 - Type moves like `e4`, `Nf3`, `Bxc6`
 - **/** - Switch back to cursor mode
 
@@ -166,7 +281,7 @@ Type moves directly:
 
 Here's a quick example of the Scholar's Mate:
 
-```
+```text
 1. e4 e5
 2. Bc4 Nc6
 3. Qh5 Nf6
@@ -174,6 +289,7 @@ Here's a quick example of the Scholar's Mate:
 ```
 
 To play this in PyChess, you would type:
+
 1. `e4` (press Enter)
 2. `e5` (press Enter)
 3. `Bc4` (press Enter)
@@ -199,17 +315,20 @@ To play this in PyChess, you would type:
 ### Special Rules
 
 **Castling** - Move king two squares toward a rook, rook jumps over:
+
 - King and rook must not have moved
 - No pieces between them
 - King not in check, doesn't pass through check, doesn't end in check
 
 **En Passant** - Special pawn capture:
+
 - When opponent's pawn moves two squares forward
 - And lands beside your pawn
 - You can capture it as if it moved only one square
 - Must be done immediately on the next move
 
 **Promotion** - When a pawn reaches the opposite end:
+
 - Must promote to Queen, Rook, Bishop, or Knight
 - Usually promoted to Queen (most powerful)
 
@@ -238,6 +357,7 @@ To play this in PyChess, you would type:
 - **c4** - English Opening (strategic)
 
 After **1. e4 e5**, common continuations:
+
 - **2. Nf3** - Open games
 - **2. Bc4** - Italian Game
 - **2. Nf3 Nc6 3. Bb5** - Spanish Opening (Ruy Lopez)
@@ -254,8 +374,8 @@ After **1. e4 e5**, common continuations:
 - [x] Undo/redo functionality
 - [x] Help overlay system
 - [x] Game mode selection menu
-- [ ] Mouse support
-- [ ] Save/load game functionality
+- [x] Mouse support
+- [x] Save/load game functionality
 - [ ] Time controls
 - [ ] Advanced features (opening book, analysis)
 
@@ -285,21 +405,19 @@ pytest --cov=pychess
 pytest tests/model/test_board.py
 ```
 
-Currently: **369 tests passing** ✅
-
-**Development Status:** 10/14 milestones complete (71%)
-
 ## Troubleshooting
 
 ### Terminal Too Small
 
 If you see "Terminal too small" error:
+
 - Resize your terminal to at least 100x44 characters
 - Or use fullscreen mode
 
 ### Unicode Characters Not Displaying
 
 If chess pieces don't display correctly:
+
 - Ensure your terminal supports Unicode
 - Try a different terminal (iTerm2, Windows Terminal, GNOME Terminal)
 - Or use ASCII mode (coming soon)
@@ -307,6 +425,7 @@ If chess pieces don't display correctly:
 ### Colors Look Wrong
 
 If colors appear incorrect:
+
 - Check your terminal's color scheme
 - Try a terminal with 256-color support
 - Ensure TERM environment variable is set correctly
