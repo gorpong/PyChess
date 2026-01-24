@@ -51,6 +51,12 @@ def parse_args(args: list[str]) -> argparse.Namespace:
         help="Load a saved game by name",
     )
     
+    parser.add_argument(
+        "--show-game",
+        metavar="NAME",
+        help="Display a saved game in magazine-style format",
+    )
+    
     return parser.parse_args(args)
 
 
@@ -115,6 +121,81 @@ def handle_list_games(manager: SaveManager) -> None:
     print("\nTo load a game: pychess --load \"<name>\"")
 
 
+def handle_show_game(manager: SaveManager, name: str) -> None:
+    """Handle the --show-game command.
+    
+    Displays a saved game in a human-friendly "magazine style" format
+    with headers and one move pair per line.
+    
+    Args:
+        manager: SaveManager instance
+        name: Name of the game to display
+        
+    Raises:
+        CLIError: If the game name is invalid or game not found
+    """
+    # Validate name - this is security critical
+    try:
+        validated_name = validate_game_name(name)
+    except InvalidGameNameError:
+        raise CLIError(
+            f"Invalid game name: {name}\n"
+            "Game names cannot contain path characters (/, \\, .., :)"
+        )
+    
+    # Try to load the game
+    try:
+        state, headers = manager.load_game(validated_name)
+    except FileNotFoundError:
+        raise CLIError(f"Game not found: {name}")
+    
+    # Display header section
+    print()
+    print("=" * 60)
+    print(f"  Game: {validated_name}")
+    print("=" * 60)
+    print()
+    print(f"  White: {headers.white:<20} Black: {headers.black}")
+    print(f"  Date:  {headers.date:<20} Result: {headers.result}")
+    print(f"  Time:  {format_elapsed_time(headers.total_time_seconds)}")
+    print()
+    print("-" * 60)
+    print("  Moves:")
+    print("-" * 60)
+    
+    # Display moves in magazine style (one pair per line)
+    moves = state.move_history
+    
+    if not moves:
+        print("  (No moves yet)")
+    else:
+        for i in range(0, len(moves), 2):
+            move_num = (i // 2) + 1
+            white_move = moves[i]
+            black_move = moves[i + 1] if i + 1 < len(moves) else ""
+            
+            # Format: "  1.  e4       e5"
+            print(f"  {move_num:>3}.  {white_move:<8} {black_move}")
+    
+    print()
+    print("-" * 60)
+    
+    # Show result at the end if game is complete
+    if headers.result in ("1-0", "0-1", "1/2-1/2"):
+        if headers.result == "1-0":
+            result_text = "White wins"
+        elif headers.result == "0-1":
+            result_text = "Black wins"
+        else:
+            result_text = "Draw"
+        print(f"  Result: {headers.result} ({result_text})")
+    else:
+        print("  Game in progress...")
+    
+    print("=" * 60)
+    print()
+
+
 def handle_load_game(
     manager: SaveManager,
     name: str
@@ -153,15 +234,15 @@ def run_cli() -> Optional[tuple[GameState, PGNHeaders, str]]:
     """Run CLI argument handling.
     
     This is the main entry point for CLI processing. It parses
-    arguments and handles --list-games and --load commands.
+    arguments and handles --list-games, --show-game, and --load commands.
     
     Returns:
-        None if --list-games was used (program should exit)
+        None if --list-games or --show-game was used (program should exit)
         Tuple of (GameState, PGNHeaders, game_name) if --load was used
         None if no arguments (start new game)
         
     Raises:
-        SystemExit: On invalid arguments or --list-games
+        SystemExit: On invalid arguments or --list-games/--show-game
     """
     args = parse_args(sys.argv[1:])
     manager = SaveManager()
@@ -170,6 +251,18 @@ def run_cli() -> Optional[tuple[GameState, PGNHeaders, str]]:
     if args.list_games:
         handle_list_games(manager)
         sys.exit(0)
+    
+    # Handle --show-game
+    if args.show_game:
+        # Validate and exit on bad name - no second chances
+        validated_name = validate_and_exit_on_bad_name(args.show_game)
+        
+        try:
+            handle_show_game(manager, validated_name)
+            sys.exit(0)
+        except CLIError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
     
     # Handle --load
     if args.load:
