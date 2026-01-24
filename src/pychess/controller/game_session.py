@@ -95,6 +95,7 @@ class GameSession:
             InputType.UNDO: self._handle_undo,
             InputType.RESTART: self._handle_restart,
             InputType.HELP: self._handle_help,
+            InputType.TUTORIAL: self._handle_tutorial,
             InputType.TOGGLE_MODE: self._handle_toggle_mode,
             InputType.SHOW_HINTS: self._handle_show_hints,
             InputType.MOUSE_CLICK: self._handle_mouse_click,
@@ -241,6 +242,10 @@ class GameSession:
         
         if cmd == '?':
             self._handle_help()
+            return False
+        
+        if cmd == 't':
+            self._handle_tutorial()
             return False
         
         # Try to parse as SAN move
@@ -520,6 +525,10 @@ class GameSession:
     def _handle_help(self) -> None:
         """Handle HELP input."""
         show_help_overlay(self.renderer.term)
+
+    def _handle_tutorial(self) -> None:
+        """Handle TUTORIAL input (T key) - jump to Tips for Beginners."""
+        show_help_overlay(self.renderer.term, start_section="t")
 
     def _handle_toggle_mode(self) -> None:
         """Handle TOGGLE_MODE input."""

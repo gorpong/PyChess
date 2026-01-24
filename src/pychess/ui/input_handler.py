@@ -21,6 +21,7 @@ class InputType(Enum):
     UNDO = auto()
     RESTART = auto()
     HELP = auto()
+    TUTORIAL = auto()  # T key - show tips for beginners
     TOGGLE_MODE = auto()  # Switch between cursor and SAN mode
     SAN_INPUT = auto()  # Text input for SAN notation
     SHOW_HINTS = auto()  # TAB key - show legal move hints
@@ -85,6 +86,8 @@ class InputHandler:
             return InputEvent(InputType.RESTART)
         elif char == '?':
             return InputEvent(InputType.HELP)
+        elif char == 't':
+            return InputEvent(InputType.TUTORIAL)
         elif char == '/':
             return InputEvent(InputType.TOGGLE_MODE)
 
