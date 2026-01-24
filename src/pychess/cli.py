@@ -16,6 +16,7 @@ from pychess.persistence.save_manager import (
     InvalidGameNameError,
     validate_game_name,
 )
+from pychess.ui.terminal import format_elapsed_time
 
 
 class CLIError(Exception):
@@ -94,21 +95,23 @@ def handle_list_games(manager: SaveManager) -> None:
         return
     
     print(f"Saved Games ({len(games)}/10):")
-    print("-" * 70)
-    print(f"{'Name':<20} {'White':<12} {'Black':<12} {'Result':<10} {'Moves'}")
-    print("-" * 70)
+    print("-" * 82)
+    print(f"{'Name':<20} {'White':<12} {'Black':<12} {'Result':<10} {'Moves':<6} {'Time'}")
+    print("-" * 82)
     
     for game in games:
         status = game.result if game.is_complete else "(ongoing)"
+        time_str = format_elapsed_time(game.total_time_seconds)
         print(
             f"{game.name:<20} "
             f"{game.white:<12} "
             f"{game.black:<12} "
             f"{status:<10} "
-            f"{game.move_count}"
+            f"{game.move_count:<6} "
+            f"{time_str}"
         )
     
-    print("-" * 70)
+    print("-" * 82)
     print("\nTo load a game: pychess --load \"<name>\"")
 
 

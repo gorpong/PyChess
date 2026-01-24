@@ -261,13 +261,26 @@ Use arrow keys to navigate:
 - **Arrow Keys** - Move cursor around the board
 - **Enter** - Select piece / Make move
 - **Escape** - Cancel selection
+- **TAB** - Show/hide legal move hints (Easy/Medium AI only)
 - **/** - Switch to SAN input mode
+
+### Mouse Controls
+
+PyChess supports full mouse interaction:
+
+- **Left Click** - Select a piece or move to a square
+- **Drag & Drop** - Click and hold on a piece, drag to destination, release to move
+- **Click-Click** - Click a piece to select it, then click the destination square
+
+Mouse controls work alongside keyboard controls - you can mix and match as you prefer.
 
 ### SAN Input Mode
 
-Type moves directly:
+Type moves directly in Standard Algebraic Notation:
 
-- Type moves like `e4`, `Nf3`, `Bxc6`
+- Type moves like `e4`, `Nf3`, `Bxc6`, `O-O`, `e8=Q`
+- **Enter** - Submit the move
+- **Backspace** - Delete last character
 - **/** - Switch back to cursor mode
 
 ### Global Commands (Both Modes)

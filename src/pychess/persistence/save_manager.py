@@ -140,6 +140,7 @@ class SavedGameInfo:
     date: str
     move_count: int
     filepath: Path
+    total_time_seconds: int = 0
     
     @property
     def is_complete(self) -> bool:
@@ -231,6 +232,7 @@ class SaveManager:
                 date=headers.date,
                 move_count=len(state.move_history),
                 filepath=filepath,
+                total_time_seconds=headers.total_time_seconds,
             )
         except Exception:
             return None
