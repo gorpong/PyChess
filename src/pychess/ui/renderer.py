@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from pychess.model.game_state import GameState
+from pychess.model.piece import Piece
 from pychess.model.square import Square
 
 
@@ -84,5 +85,18 @@ class Renderer(ABC):
 
         Raises:
             ValueError: If terminal is too small
+        """
+        pass
+
+    @abstractmethod
+    def prompt_promotion_choice(self) -> Piece:
+        """Prompt user to choose a piece for pawn promotion.
+
+        Displays a dialog allowing the user to choose between
+        Queen, Rook, Bishop, or Knight. Pressing Enter without
+        a selection defaults to Queen.
+
+        Returns:
+            The chosen piece type (QUEEN, ROOK, BISHOP, or KNIGHT)
         """
         pass

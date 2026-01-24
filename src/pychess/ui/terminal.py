@@ -10,7 +10,7 @@ from typing import Optional
 from blessed import Terminal
 
 from pychess.model.game_state import GameState
-from pychess.model.piece import Color
+from pychess.model.piece import Color, Piece
 from pychess.model.square import Square
 from pychess.ui.renderer import Renderer
 from pychess.ui.board_view import BoardView
@@ -524,3 +524,80 @@ class TerminalRenderer(Renderer):
         file = chr(ord('a') + file_idx)
 
         return Square(file=file, rank=rank)
+
+    def prompt_promotion_choice(self) -> Piece:
+        """Prompt user to choose a piece for pawn promotion.
+
+        Displays a dialog allowing the user to choose between
+        Queen, Rook, Bishop, or Knight. Pressing Enter without
+        a selection defaults to Queen.
+
+        Returns:
+            The chosen piece type (QUEEN, ROOK, BISHOP, or KNIGHT)
+        """
+        # Calculate dialog position (center of screen)
+        dialog_width = 50
+        dialog_height = 9
+        dialog_x = (self.term.width - dialog_width) // 2
+        dialog_y = (self.term.height - dialog_height) // 2
+
+        # Draw dialog box
+        with self.term.cbreak():
+            # Top border
+            print(self.term.move_xy(dialog_x, dialog_y) + 
+                  "╔" + "═" * (dialog_width - 2) + "╗")
+            
+            # Title
+            title = "Pawn Promotion"
+            title_padding = (dialog_width - 2 - len(title)) // 2
+            print(self.term.move_xy(dialog_x, dialog_y + 1) + 
+                  "║" + " " * title_padding + 
+                  self._safe_format(title, self.term.bold) + 
+                  " " * (dialog_width - 2 - title_padding - len(title)) + "║")
+            
+            # Separator
+            print(self.term.move_xy(dialog_x, dialog_y + 2) + 
+                  "╟" + "─" * (dialog_width - 2) + "╢")
+            
+            # Options
+            options = [
+                "Q - Queen  (♕) [default]",
+                "R - Rook   (♖)",
+                "B - Bishop (♗)",
+                "N - Knight (♘)",
+            ]
+            for i, option in enumerate(options):
+                option_padding = (dialog_width - 2 - len(option)) // 2
+                print(self.term.move_xy(dialog_x, dialog_y + 3 + i) + 
+                      "║" + " " * option_padding + option + 
+                      " " * (dialog_width - 2 - option_padding - len(option)) + "║")
+            
+            # Bottom border
+            print(self.term.move_xy(dialog_x, dialog_y + 7) + 
+                  "╟" + "─" * (dialog_width - 2) + "╢")
+            
+            prompt = "Press Q/R/B/N or Enter for Queen:"
+            prompt_padding = (dialog_width - 2 - len(prompt)) // 2
+            print(self.term.move_xy(dialog_x, dialog_y + 8) + 
+                  "║" + " " * prompt_padding + prompt + 
+                  " " * (dialog_width - 2 - prompt_padding - len(prompt)) + "║")
+            
+            print(self.term.move_xy(dialog_x, dialog_y + 9) + 
+                  "╚" + "═" * (dialog_width - 2) + "╝")
+            
+            sys.stdout.flush()
+
+            # Wait for valid input
+            while True:
+                key = self.term.inkey(timeout=None)
+                choice = str(key).upper()
+
+                if choice == 'Q' or key.name == 'KEY_ENTER':
+                    return Piece.QUEEN
+                elif choice == 'R':
+                    return Piece.ROOK
+                elif choice == 'B':
+                    return Piece.BISHOP
+                elif choice == 'N':
+                    return Piece.KNIGHT
+                # Ignore other keys and wait for valid input

@@ -328,21 +328,49 @@ class GameSession:
             from_square: Source square
             to_square: Destination square
         """
-        # Find matching legal move
+        from pychess.model.piece import Piece
+        
+        # Find all matching legal moves (there may be multiple for promotions)
         legal_moves = get_legal_moves(self.game_state)
-        matching_move = None
+        matching_moves = [
+            move for move in legal_moves
+            if move.from_square == from_square and move.to_square == to_square
+        ]
         
-        for move in legal_moves:
-            if move.from_square == from_square and move.to_square == to_square:
-                matching_move = move
-                break
-        
-        if matching_move:
-            self._execute_move(matching_move)
-            self.cursor_state = self.cursor_state.clear_selection()
-        else:
+        if not matching_moves:
             self.renderer.show_error("Illegal move")
             self.cursor_state = self.cursor_state.clear_selection()
+            return
+        
+        # Check if this is a promotion (multiple moves with different promotion pieces)
+        if len(matching_moves) > 1:
+            # This is a promotion - all moves should have promotion pieces
+            promotion_moves = [m for m in matching_moves if m.promotion is not None]
+            if len(promotion_moves) == len(matching_moves):
+                # Prompt user for promotion choice
+                chosen_piece = self.renderer.prompt_promotion_choice()
+                
+                # Find the move with the chosen promotion piece
+                matching_move = None
+                for move in promotion_moves:
+                    if move.promotion == chosen_piece:
+                        matching_move = move
+                        break
+                
+                if matching_move is None:
+                    # Fallback to Queen if something went wrong
+                    matching_move = next(
+                        (m for m in promotion_moves if m.promotion == Piece.QUEEN),
+                        promotion_moves[0]
+                    )
+            else:
+                # Unexpected: multiple non-promotion moves (shouldn't happen)
+                matching_move = matching_moves[0]
+        else:
+            matching_move = matching_moves[0]
+        
+        self._execute_move(matching_move)
+        self.cursor_state = self.cursor_state.clear_selection()
 
     def _try_select_piece(self) -> None:
         """Try to select the piece at the current cursor position."""
