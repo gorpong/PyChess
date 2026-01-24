@@ -349,7 +349,7 @@ To play this in PyChess, you would type:
 5. **Watch for Checks**: Always look for ways to attack the opponent's King
 6. **Protect Your Pieces**: Don't leave valuable pieces where they can be captured
 
-## Common Opening Moves
+### Common Opening Moves
 
 - **e4** - King's Pawn Opening (most popular)
 - **d4** - Queen's Pawn Opening (solid and strategic)
