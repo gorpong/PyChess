@@ -380,16 +380,20 @@ class TerminalRenderer(Renderer):
         """
         input_y = self.term.height - 3
 
+        # Clear the input line first to handle backspace properly
+        # This ensures deleted characters don't remain visible
+        print(self.term.move_xy(5, input_y) + self.term.clear_eol(), end="")
+
         if mode == "cursor":
             # Cursor mode instructions
             prompt = "Cursor Mode: Use arrow keys to move, Enter to select/move"
             print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold))
-            help_text = "Commands: q=quit, u=undo, r=restart, Esc=cancel, /=SAN mode"
+            help_text = "Commands: q=quit, u=undo, r=restart, ?=help, Esc=cancel, /=SAN mode"
         else:
             # SAN input mode
             prompt = "Enter move (SAN): "
             print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold) + self.input_buffer)
-            help_text = "Commands: q=quit, u=undo, r=restart, ?=help"
+            help_text = "Commands: q=quit, u=undo, r=restart, ?=help, /=cursor mode"
 
         print(self.term.move_xy(5, input_y + 1) + self._safe_format(help_text, self.term.dim))
 
