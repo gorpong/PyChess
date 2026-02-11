@@ -60,6 +60,7 @@ def _create_mock_renderer():
     renderer.term.home = Mock(return_value="")
     renderer.term.clear = Mock(return_value="")
     renderer.term.move_xy = Mock(return_value="")
+    renderer.term.clear_eol = Mock(return_value="")  # Add for _render_input
     renderer.term.bold = Mock(side_effect=lambda x: x)
     renderer.term.dim = Mock(side_effect=lambda x: x)
     renderer.term.normal = ""
@@ -503,3 +504,46 @@ class TestGameResultDisplay:
             renderer.render(state, game_result="0-1")
             renderer.render(state, game_result="1/2-1/2")
             renderer.render(state, game_result=None)
+
+
+class TestRenderPerformance:
+    """Tests for render performance optimizations."""
+
+    def test_render_uses_single_print_call(self):
+        """Render should consolidate all output into a single print() call for efficiency.
+        
+        This test verifies the performance optimization where instead of making 200+
+        individual print() calls (one for each square line, border, label, etc.),
+        the renderer builds the entire frame as a string and calls print() once.
+        """
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        with patch('builtins.print') as mock_print:
+            renderer.render(
+                state,
+                selected_square=None,
+                cursor_square=None,
+                legal_moves=set(),
+                status_messages=["Test message"],
+                elapsed_seconds=10
+            )
+            
+            # Should only call print() once for the entire render
+            # (plus one for flush, but we're counting the main render print)
+            assert mock_print.call_count == 1, \
+                f"Expected 1 print() call for efficiency but got {mock_print.call_count}"
+    
+    def test_render_with_game_result_uses_single_print(self):
+        """Render with game result should still use only one print() call."""
+        renderer = _create_mock_renderer()
+        state = GameState.initial()
+        
+        with patch('builtins.print') as mock_print:
+            renderer.render(
+                state,
+                game_result="1-0"
+            )
+            
+            assert mock_print.call_count == 1, \
+                f"Expected 1 print() call but got {mock_print.call_count}"

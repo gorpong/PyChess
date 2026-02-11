@@ -173,11 +173,11 @@ class TerminalRenderer(Renderer):
         if legal_moves is None:
             legal_moves = set()
 
-        # Clear screen
-        print(self.term.home() + self.term.clear(), end="")
-
+        # Build entire frame and print once for efficiency
+        frame = self.term.home() + self.term.clear()
+        
         # Render board
-        self._render_board(
+        frame += self._render_board(
             game_state.board,
             selected_square,
             cursor_square,
@@ -186,13 +186,13 @@ class TerminalRenderer(Renderer):
         )
 
         # Render status area
-        self._render_status(game_state, elapsed_seconds)
+        frame += self._render_status(game_state, elapsed_seconds)
 
         # Render input area
-        self._render_input()
+        frame += self._render_input()
 
-        # Flush output
-        sys.stdout.flush()
+        # Single print for entire frame
+        print(frame, end='', flush=True)
 
     def _render_board(
         self,
@@ -201,7 +201,7 @@ class TerminalRenderer(Renderer):
         cursor_square: Optional[Square],
         legal_moves: set[Square],
         game_result: Optional[str] = None,
-    ) -> None:
+    ) -> str:
         """Render the chess board with pieces and highlighting.
 
         Args:
@@ -210,8 +210,14 @@ class TerminalRenderer(Renderer):
             cursor_square: Square where cursor is positioned
             legal_moves: Set of legal destination squares
             game_result: Game result string if game ended
+            
+        Returns:
+            String containing all terminal sequences for the board
         """
         files = "abcdefgh"
+        
+        # Build entire frame as a list
+        frame = []
 
         # Calculate center offset if terminal is wider than needed
         board_total_width = 8 * self.SQUARE_WIDTH + 10
@@ -220,7 +226,7 @@ class TerminalRenderer(Renderer):
         # Draw title
         title = "PyChess - Terminal Chess Game"
         title_x = center_x + (board_total_width - len(title)) // 2
-        print(self.term.move_xy(title_x, 1) + self._safe_format(title, self.term.bold))
+        frame.append(self.term.move_xy(title_x, 1) + self._safe_format(title, self.term.bold))
 
         # Draw game result in prominent position (top-left area)
         if game_result:
@@ -231,15 +237,15 @@ class TerminalRenderer(Renderer):
             
             # Draw a box around the result
             box_width = len(result_text) + 4
-            print(self.term.move_xy(result_x, result_y - 1) + "+" + "-" * (box_width - 2) + "+")
-            print(self.term.move_xy(result_x, result_y) + "| " + self._safe_format(result_text, self.term.bold) + " |")
-            print(self.term.move_xy(result_x, result_y + 1) + "+" + "-" * (box_width - 2) + "+")
+            frame.append(self.term.move_xy(result_x, result_y - 1) + "+" + "-" * (box_width - 2) + "+")
+            frame.append(self.term.move_xy(result_x, result_y) + "| " + self._safe_format(result_text, self.term.bold) + " |")
+            frame.append(self.term.move_xy(result_x, result_y + 1) + "+" + "-" * (box_width - 2) + "+")
 
         # Draw top border
         border_x = center_x + self.BOARD_START_X - 2
         border_y = self.BOARD_START_Y - 1
         border_line = "+" + "-" * (8 * self.SQUARE_WIDTH + 2) + "+"
-        print(self.term.move_xy(border_x, border_y) + border_line)
+        frame.append(self.term.move_xy(border_x, border_y) + border_line)
 
         # Render each rank from 8 to 1
         for rank in range(8, 0, -1):
@@ -247,7 +253,7 @@ class TerminalRenderer(Renderer):
 
             # Draw rank label (left side)
             rank_label_x = center_x + self.BOARD_START_X - 3
-            print(self.term.move_xy(rank_label_x, rank_y + 1) + str(rank))
+            frame.append(self.term.move_xy(rank_label_x, rank_y + 1) + str(rank))
 
             # Draw each file
             for file_idx, file in enumerate(files):
@@ -301,8 +307,8 @@ class TerminalRenderer(Renderer):
                         left_pad = " " * padding
                         right_pad = " " * (self.SQUARE_WIDTH - padding - 1)
 
-                        # Print with background and piece color
-                        print(
+                        # Build with background and piece color
+                        frame.append(
                             self.term.move_xy(square_x, square_y + line) +
                             bg_color(left_pad) +
                             bg_color(piece_text) +
@@ -311,7 +317,7 @@ class TerminalRenderer(Renderer):
                         )
                         continue
 
-                    print(
+                    frame.append(
                         self.term.move_xy(square_x, square_y + line) +
                         bg_color(content) +
                         self.term.normal
@@ -319,26 +325,33 @@ class TerminalRenderer(Renderer):
 
             # Draw rank label (right side)
             rank_label_x = center_x + self.BOARD_START_X + 8 * self.SQUARE_WIDTH + 1
-            print(self.term.move_xy(rank_label_x, rank_y + 1) + str(rank))
+            frame.append(self.term.move_xy(rank_label_x, rank_y + 1) + str(rank))
 
         # Draw bottom border
         border_y = self.BOARD_START_Y + 8 * self.SQUARE_HEIGHT
-        print(self.term.move_xy(border_x, border_y) + border_line)
+        frame.append(self.term.move_xy(border_x, border_y) + border_line)
 
         # Draw file labels
         file_labels_y = border_y + 1
         file_labels_x = center_x + self.BOARD_START_X
         for file_idx, file in enumerate(files):
             label_x = file_labels_x + file_idx * self.SQUARE_WIDTH + self.SQUARE_WIDTH // 2
-            print(self.term.move_xy(label_x, file_labels_y) + file)
+            frame.append(self.term.move_xy(label_x, file_labels_y) + file)
+        
+        # Return frame as string
+        return ''.join(frame)
 
-    def _render_status(self, game_state: GameState, elapsed_seconds: Optional[int] = None) -> None:
+    def _render_status(self, game_state: GameState, elapsed_seconds: Optional[int] = None) -> str:
         """Render the status area with game information.
 
         Args:
             game_state: Current game state
             elapsed_seconds: Total elapsed game time in seconds (if any)
+            
+        Returns:
+            String containing all terminal sequences for the status area
         """
+        frame = []
         status_y = self.BOARD_START_Y + 8 * self.SQUARE_HEIGHT + 3
 
         # Display turn and elapsed time on same line
@@ -346,11 +359,11 @@ class TerminalRenderer(Renderer):
         if elapsed_seconds is not None:
             time_text = f"Time: {format_elapsed_time(elapsed_seconds)}"
             turn_text = f"{turn_text}    {time_text}"
-        print(self.term.move_xy(5, status_y) + self._safe_format(turn_text, self.term.bold))
+        frame.append(self.term.move_xy(5, status_y) + self._safe_format(turn_text, self.term.bold))
 
         # Display move history (last 5 moves)
         history_y = status_y + 2
-        print(self.term.move_xy(5, history_y) + self._safe_format("Move History:", self.term.bold))
+        frame.append(self.term.move_xy(5, history_y) + self._safe_format("Move History:", self.term.bold))
 
         moves = game_state.move_history
         last_moves = moves[-10:] if len(moves) > 10 else moves
@@ -362,40 +375,48 @@ class TerminalRenderer(Renderer):
             black_move = last_moves[i + 1] if i + 1 < len(last_moves) else ""
 
             move_text = f"{move_num}. {white_move:8} {black_move}"
-            print(self.term.move_xy(5, history_y + 1 + (i // 2)) + move_text)
+            frame.append(self.term.move_xy(5, history_y + 1 + (i // 2)) + move_text)
 
         # Display status messages
         messages_y = status_y + 10
-        print(self.term.move_xy(5, messages_y) + self._safe_format("Status:", self.term.bold))
+        frame.append(self.term.move_xy(5, messages_y) + self._safe_format("Status:", self.term.bold))
 
         # Show last 5 messages
         for idx, msg in enumerate(self.status_messages[-5:]):
-            print(self.term.move_xy(5, messages_y + 1 + idx) + msg)
+            frame.append(self.term.move_xy(5, messages_y + 1 + idx) + msg)
+        
+        return ''.join(frame)
 
-    def _render_input(self, mode: str = "san") -> None:
+    def _render_input(self, mode: str = "san") -> str:
         """Render the input area.
 
         Args:
             mode: Input mode - "san" for SAN notation, "cursor" for cursor navigation
+            
+        Returns:
+            String containing all terminal sequences for the input area
         """
+        frame = []
         input_y = self.term.height - 3
 
         # Clear the input line first to handle backspace properly
         # This ensures deleted characters don't remain visible
-        print(self.term.move_xy(5, input_y) + self.term.clear_eol(), end="")
+        frame.append(self.term.move_xy(5, input_y) + self.term.clear_eol())
 
         if mode == "cursor":
             # Cursor mode instructions
             prompt = "Cursor Mode: Use arrow keys to move, Enter to select/move"
-            print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold))
+            frame.append(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold))
             help_text = "Commands: q=quit, u=undo, r=restart, ?=help, T=tips, Esc=cancel, /=SAN mode"
         else:
             # SAN input mode
             prompt = "Enter move (SAN): "
-            print(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold) + self.input_buffer)
+            frame.append(self.term.move_xy(5, input_y) + self._safe_format(prompt, self.term.bold) + self.input_buffer)
             help_text = "Commands: q=quit, u=undo, r=restart, ?=help, T=tips, /=cursor mode"
 
-        print(self.term.move_xy(5, input_y + 1) + self._safe_format(help_text, self.term.dim))
+        frame.append(self.term.move_xy(5, input_y + 1) + self._safe_format(help_text, self.term.dim))
+        
+        return ''.join(frame)
 
     def get_input(self) -> str:
         """Get input from the user.
@@ -438,7 +459,7 @@ class TerminalRenderer(Renderer):
         Returns:
             Key object from blessed Terminal (may be keyboard or mouse event)
         """
-        with self.term.cbreak(), self.term.mouse_enabled(clicks=True, report_drag=True):
+        with self.term.cbreak(), self.term.mouse_enabled(clicks=True):
             return self.term.inkey(timeout=None)
 
     def wait_for_keypress(self) -> None:
