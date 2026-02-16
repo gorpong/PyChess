@@ -22,12 +22,11 @@ Most importantly, the game must "feel good" to the players, which means the inpu
 needs to be responsive, clear highlighting of selection points, obvious help text,
 and helpful status messages at certain times.
 
-We don't want any sort of Graphical UI, this is all a text-based game that can run
-on Linux and Windows in Python. We don't care about networking features, so no sort
-of multi-player games over a network (although, that might be something we can add
-at a future time, so don't rule it out entirely). At no point do we want any sort
-of monetization, so even if we add networking features at some point, it will
-never need to support any sort of in-game purchase or anything like that.
+We don't care about networking features, so no sort of multi-player games over a
+network (although, that might be something we can add at a future time, so don't
+rule it out entirely). At no point do we want any sort of monetization, so even
+if we add networking features at some point, it will never need to support any
+sort of in-game purchase or anything like that.
 
 ## Game persistence & logging
 
@@ -130,11 +129,10 @@ Game storage must follow the Portable Game Notation (PGN) specification [https:/
 
 ### Expected Outputs
 
-* Clear explanations to the user with approval before implementing new code for new features:
+* Clear explanations to the user with approval before implementing new code:
   * Must describe any classes that will be modified/created/removed
   * Must describe any methods that will be modified/created/removed
   * Must describe any APIs that will be modified/created/removed
-  * If the new feature is listed as a milestone, be sure to update the MILESTONES.md file after it's implemented
 * Minimal but sufficient comments
 * Tests included where logic is non-trivial
 * No placeholder TODOs without explanation
