@@ -5,14 +5,26 @@
     --light-square: #f0d9b5;
     --dark-square: #b58863;
     
+    /* Highlight colors */
+    --selected: #ffcc00;
+    --selected-shadow: rgba(255, 204, 0, 0.6);
+    --legal-move: rgba(0, 128, 0, 0.5);
+    --legal-move-capture: rgba(0, 128, 0, 0.6);
+    --last-move-light: #f7ec7a;
+    --last-move-dark: #dac34b;
+    --check: rgba(255, 0, 0, 0.5);
+    
     /* UI colors - dark theme */
     --bg-primary: #312e2b;
     --bg-secondary: #272522;
+    --bg-tertiary: #1f1d1b;
     --text-primary: #ffffff;
     --text-secondary: #b0b0b0;
+    --text-muted: #737373;
     
     /* Accent colors */
     --accent-primary: #81b64c;
+    --accent-hover: #9ece5a;
 }
 
 * {
@@ -55,11 +67,151 @@ main {
 }
 
 .welcome-container .menu {
-    background-color: var(--bg-secondary);
-    padding: 2rem;
-    border-radius: 8px;
+    margin-top: 1.5rem;
 }
 
-.welcome-container .menu p {
-    margin: 0.5rem 0;
+.welcome-container .menu .status {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.welcome-container .menu .hint {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Board container with labels */
+.game-preview {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.board-container {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: 1fr auto;
+    gap: 0;
+    align-items: center;
+}
+
+.rank-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    height: 100%;
+    padding-right: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.rank-labels span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100% / 8);
+}
+
+.file-labels {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    padding-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    grid-column: 2;
+}
+
+.file-labels span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% / 8);
+}
+
+/* Chess board */
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: min(80vw, 480px);
+    height: min(80vw, 480px);
+    border: 2px solid var(--bg-tertiary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Individual squares */
+.square {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+}
+
+.square.light {
+    background-color: var(--light-square);
+}
+
+.square.dark {
+    background-color: var(--dark-square);
+}
+
+/* Last move highlighting */
+.square.last-move.light {
+    background-color: var(--last-move-light);
+}
+
+.square.last-move.dark {
+    background-color: var(--last-move-dark);
+}
+
+/* Selected square */
+.square.selected {
+    box-shadow: inset 0 0 0 4px var(--selected);
+}
+
+/* Legal move indicators */
+.square.legal-move::after {
+    content: '';
+    position: absolute;
+    width: 33%;
+    height: 33%;
+    background-color: var(--legal-move);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* Legal move on square with piece (capture) */
+.square.legal-move.has-piece::after {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: 5px solid var(--legal-move-capture);
+    border-radius: 50%;
+    box-sizing: border-box;
+}
+
+/* Chess pieces */
+.piece {
+    width: 85%;
+    height: 85%;
+    object-fit: contain;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+    .board {
+        width: min(60vw, 520px);
+        height: min(60vw, 520px);
+    }
+}
+
+@media (min-width: 1200px) {
+    .board {
+        width: 520px;
+        height: 520px;
+    }
 }

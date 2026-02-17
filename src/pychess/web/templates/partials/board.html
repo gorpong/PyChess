@@ -1,0 +1,15 @@
+<div id="board" class="board">
+    {% for rank in board_data %}
+        {% for square in rank %}
+            <div class="square {% if square.is_light %}light{% else %}dark{% endif %}{% if square.is_selected %} selected{% endif %}{% if square.is_legal_move %} legal-move{% endif %}{% if square.is_last_move %} last-move{% endif %}{% if square.has_piece %} has-piece{% endif %}"
+                 data-square="{{ square.square }}">
+                {% if square.piece %}
+                    <img src="{{ url_for('static', filename='images/pieces/' + square.piece + '.svg') }}"
+                         alt="{{ square.piece }}"
+                         class="piece"
+                         draggable="false">
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endfor %}
+</div>

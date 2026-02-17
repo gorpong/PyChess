@@ -6,9 +6,12 @@ independently before moving to the next phase.
 
 ## Document History
 
-| Date | Phase | Status      | Notes               |
-|------|-------|-------------|---------------------|
-|  TBD |   1   | Not Started | Project setup       |
+| Date | Phase | Status | Notes |
+|------|-------|--------|-------|
+| 2026-02-16 | 1 | Complete | Project setup, Flask skeleton |
+| 2026-02-16 | 2 | Complete | Game state serialization |
+| 2026-01-16 | 3 | Complete | Board rendering with SVG pieces |
+
 
 ---
 
