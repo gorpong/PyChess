@@ -7,35 +7,8 @@
     <h1>♔ PyChess ♚</h1>
     <p class="tagline">Terminal Chess in Your Browser</p>
     
-    <div class="game-preview">
-        <div class="board-container">
-            <div class="rank-labels">
-                <span>8</span>
-                <span>7</span>
-                <span>6</span>
-                <span>5</span>
-                <span>4</span>
-                <span>3</span>
-                <span>2</span>
-                <span>1</span>
-            </div>
-            {% include "partials/board.html" %}
-            <div class="file-labels">
-                <span>a</span>
-                <span>b</span>
-                <span>c</span>
-                <span>d</span>
-                <span>e</span>
-                <span>f</span>
-                <span>g</span>
-                <span>h</span>
-            </div>
-        </div>
-    </div>
-    
-    <div class="menu">
-        <p class="status">{{ game.turn | title }} to move</p>
-        <p class="hint">Game mode selection coming in Phase 8.</p>
+    <div id="game-container">
+        {% include "partials/game_area.html" %}
     </div>
 </div>
 {% endblock %}

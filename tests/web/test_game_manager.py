@@ -243,3 +243,186 @@ class TestGlobalGameManager:
         
         manager2 = get_game_manager()
         assert manager2.get_game('test') is None
+
+class TestWebGameSessionHints:
+    """Tests for hint functionality in WebGameSession."""
+
+    def test_hints_allowed_in_multiplayer(self):
+        """Test that hints are allowed in multiplayer mode."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='multiplayer',
+        )
+        assert session.hints_allowed is True
+
+    def test_hints_allowed_in_easy(self):
+        """Test that hints are allowed in easy mode."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='easy',
+        )
+        assert session.hints_allowed is True
+
+    def test_hints_allowed_in_medium(self):
+        """Test that hints are allowed in medium mode."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='medium',
+        )
+        assert session.hints_allowed is True
+
+    def test_hints_not_allowed_in_hard(self):
+        """Test that hints are not allowed in hard mode."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='hard',
+        )
+        assert session.hints_allowed is False
+
+    def test_get_legal_moves_empty_without_selection(self):
+        """Test that legal moves is empty without selection."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='multiplayer',
+            show_hints=True,
+        )
+        assert session.get_legal_moves_for_selected() == set()
+
+    def test_get_legal_moves_empty_without_hints_enabled(self):
+        """Test that legal moves is empty when hints not enabled."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='multiplayer',
+            selected_square=Square(file='e', rank=2),
+            show_hints=False,
+        )
+        assert session.get_legal_moves_for_selected() == set()
+
+    def test_get_legal_moves_returns_moves_when_enabled(self):
+        """Test that legal moves are returned when hints enabled."""
+        from pychess.model.game_state import GameState
+
+        session = WebGameSession(
+            session_id='test',
+            game_state=GameState.initial(),
+            game_mode='multiplayer',
+            selected_square=Square(file='e', rank=2),
+            show_hints=True,
+        )
+        legal_moves = session.get_legal_moves_for_selected()
+
+        # e2 pawn can move to e3 and e4
+        assert Square(file='e', rank=3) in legal_moves
+        assert Square(file='e', rank=4) in legal_moves
+        assert len(legal_moves) == 2
+
+
+class TestGameManagerSelection:
+    """Tests for selection handling in GameManager."""
+
+    def test_select_own_piece(self, manager):
+        """Test selecting own piece."""
+        session = manager.create_game('test', 'multiplayer')
+
+        session = manager.select_square(session, Square(file='e', rank=2))
+
+        assert session.selected_square == Square(file='e', rank=2)
+
+    def test_select_opponent_piece_rejected(self, manager):
+        """Test that selecting opponent's piece is rejected."""
+        session = manager.create_game('test', 'multiplayer')
+
+        session = manager.select_square(session, Square(file='e', rank=7))
+
+        assert session.selected_square is None
+        assert "not your piece" in session.status_messages[0].lower()
+
+    def test_select_empty_square_clears(self, manager):
+        """Test that selecting empty square clears selection."""
+        session = manager.create_game('test', 'multiplayer')
+        session = manager.select_square(session, Square(file='e', rank=2))
+
+        session = manager.select_square(session, Square(file='e', rank=4))
+
+        assert session.selected_square is None
+
+    def test_select_same_square_deselects(self, manager):
+        """Test that clicking same square deselects."""
+        session = manager.create_game('test', 'multiplayer')
+        session = manager.select_square(session, Square(file='e', rank=2))
+
+        session = manager.select_square(session, Square(file='e', rank=2))
+
+        assert session.selected_square is None
+
+    def test_selection_resets_hints(self, manager):
+        """Test that new selection resets hints."""
+        session = manager.create_game('test', 'multiplayer')
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.toggle_hints(session)
+        assert session.show_hints is True
+
+        session = manager.select_square(session, Square(file='d', rank=2))
+
+        assert session.show_hints is False
+
+
+class TestGameManagerToggleHints:
+    """Tests for hint toggling in GameManager."""
+
+    def test_toggle_hints_on(self, manager):
+        """Test toggling hints on."""
+        session = manager.create_game('test', 'multiplayer')
+        session = manager.select_square(session, Square(file='e', rank=2))
+
+        session = manager.toggle_hints(session)
+
+        assert session.show_hints is True
+
+    def test_toggle_hints_off(self, manager):
+        """Test toggling hints off."""
+        session = manager.create_game('test', 'multiplayer')
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.toggle_hints(session)
+
+        session = manager.toggle_hints(session)
+
+        assert session.show_hints is False
+
+    def test_toggle_hints_requires_selection(self, manager):
+        """Test that toggle hints requires selection."""
+        session = manager.create_game('test', 'multiplayer')
+
+        session = manager.toggle_hints(session)
+
+        assert session.show_hints is False
+        assert 'Select a piece first' in session.status_messages[0]
+
+    def test_toggle_hints_rejected_in_hard_mode(self, manager):
+        """Test that hints are rejected in hard mode."""
+        session = manager.create_game('test', 'hard')
+        session = manager.select_square(session, Square(file='e', rank=2))
+
+        session = manager.toggle_hints(session)
+
+        assert session.show_hints is False
+        assert 'not available in Hard mode' in session.status_messages[0]
+

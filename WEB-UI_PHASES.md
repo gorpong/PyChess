@@ -12,6 +12,7 @@ independently before moving to the next phase.
 | 2026-02-16 | 2 | Complete | Game state serialization |
 | 2026-02-16 | 3 | Complete | Board rendering with SVG pieces |
 | 2026-02-17 | 4 | Complete | Game session management |
+| 2026-02-17 | 5 | Complete | Piece selection and hints (on request) |
 
 ---
 

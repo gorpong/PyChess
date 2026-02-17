@@ -11,8 +11,10 @@ from typing import Optional
 
 from pychess.ai.engine import AIEngine, Difficulty
 from pychess.model.game_state import GameState
+from pychess.model.piece import Color
 from pychess.model.square import Square
 from pychess.persistence.save_manager import SaveManager
+from pychess.rules.validator import get_legal_moves
 
 
 # Map mode strings to AI difficulty
@@ -21,6 +23,9 @@ MODE_TO_DIFFICULTY = {
     'medium': Difficulty.MEDIUM,
     'hard': Difficulty.HARD,
 }
+
+# Modes where hints are allowed
+HINTS_ALLOWED_MODES = {'multiplayer', 'easy', 'medium'}
 
 
 @dataclass
@@ -37,6 +42,8 @@ class WebGameSession:
         start_time: Unix timestamp when game started.
         game_name: Name for saving, None until saved or loaded.
         last_move: Tuple of (from_square, to_square) for highlighting.
+        show_hints: Whether to currently display legal move hints.
+        status_messages: List of status messages to display.
     """
     session_id: str
     game_state: GameState
@@ -47,7 +54,37 @@ class WebGameSession:
     start_time: float = field(default_factory=time.time)
     game_name: Optional[str] = None
     last_move: Optional[tuple[Square, Square]] = None
+    show_hints: bool = False
     status_messages: list[str] = field(default_factory=list)
+    
+    @property
+    def hints_allowed(self) -> bool:
+        """Check if hints are allowed in this game mode."""
+        return self.game_mode in HINTS_ALLOWED_MODES
+    
+    def get_legal_moves_for_selected(self) -> set[Square]:
+        """Get legal destination squares for the selected piece.
+        
+        Returns:
+            Set of squares the selected piece can legally move to,
+            or empty set if no piece selected or hints not enabled.
+        """
+        if not self.selected_square:
+            return set()
+        
+        if not self.show_hints:
+            return set()
+        
+        if not self.hints_allowed:
+            return set()
+        
+        legal_squares = set()
+        all_legal_moves = get_legal_moves(self.game_state)
+        for move in all_legal_moves:
+            if move.from_square == self.selected_square:
+                legal_squares.add(move.to_square)
+        
+        return legal_squares
 
 
 class GameManager:
@@ -134,6 +171,77 @@ class GameManager:
             session_id: Session identifier to remove.
         """
         self._sessions.pop(session_id, None)
+    
+    def select_square(self, session: WebGameSession, square: Square) -> WebGameSession:
+        """Handle square selection logic.
+        
+        Args:
+            session: Current game session.
+            square: Square that was clicked.
+            
+        Returns:
+            Updated session with new selection state.
+        """
+        game_state = session.game_state
+        piece_info = game_state.board.get(square)
+        
+        # If clicking the already-selected square, deselect it
+        if session.selected_square == square:
+            session.selected_square = None
+            session.show_hints = False
+            session.status_messages = ['Selection cleared']
+            return session
+        
+        # If a piece is already selected, this might be a move attempt
+        # (handled in Phase 6 - for now just reselect)
+        
+        # Check if square has a piece belonging to current player
+        if piece_info:
+            piece_type, piece_color = piece_info
+            if piece_color == game_state.turn:
+                # Select this piece
+                session.selected_square = square
+                session.show_hints = False  # Reset hints on new selection
+                color_name = 'White' if piece_color == Color.WHITE else 'Black'
+                session.status_messages = [f'Selected {color_name} {piece_type.name.title()}']
+            else:
+                # Opponent's piece - can't select
+                session.status_messages = ["That's not your piece!"]
+        else:
+            # Empty square - clear selection
+            session.selected_square = None
+            session.show_hints = False
+            session.status_messages = ['Selection cleared']
+        
+        return session
+    
+    def toggle_hints(self, session: WebGameSession) -> WebGameSession:
+        """Toggle hint display for the current selection.
+        
+        Args:
+            session: Current game session.
+            
+        Returns:
+            Updated session with toggled hints state.
+        """
+        if not session.hints_allowed:
+            session.status_messages = ['Hints are not available in Hard mode']
+            return session
+        
+        if not session.selected_square:
+            session.status_messages = ['Select a piece first to see hints']
+            return session
+        
+        session.show_hints = not session.show_hints
+        
+        if session.show_hints:
+            legal_moves = session.get_legal_moves_for_selected()
+            move_count = len(legal_moves)
+            session.status_messages = [f'Showing {move_count} legal move(s)']
+        else:
+            session.status_messages = ['Hints hidden']
+        
+        return session
     
     def load_saved_game(self, session_id: str, game_name: str) -> WebGameSession:
         """Load a saved game from PGN into a new session.
