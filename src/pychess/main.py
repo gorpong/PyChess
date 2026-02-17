@@ -1,5 +1,6 @@
 """Entry point for PyChess."""
 
+import argparse
 import sys
 import time
 from typing import Optional
@@ -133,8 +134,36 @@ def prompt_save_game(
         print(f"Error saving game: {e}")
 
 
+def parse_main_args() -> argparse.Namespace:
+    """Parse command-line arguments for main entry point.
+    
+    Returns:
+        Parsed arguments namespace.
+    """
+    parser = argparse.ArgumentParser(
+        prog="pychess",
+        description="Terminal-based ASCII Chess Game",
+        add_help=False,  # We handle help via run_cli for terminal mode
+    )
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Start the web UI instead of terminal UI",
+    )
+    # Parse known args to allow other args to pass through to run_cli
+    args, _ = parser.parse_known_args()
+    return args
+
+
 def main() -> None:
     """Main entry point for the pychess command."""
+    # Check for --web flag first
+    args = parse_main_args()
+    if args.web:
+        from pychess.web.app import main as web_main
+        web_main()
+        return
+    
     # Handle CLI arguments first (before initializing renderer)
     loaded_game = run_cli()
     

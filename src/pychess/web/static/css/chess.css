@@ -1,0 +1,65 @@
+/* PyChess Web UI Styles */
+
+:root {
+    /* Board colors - classic wood tones */
+    --light-square: #f0d9b5;
+    --dark-square: #b58863;
+    
+    /* UI colors - dark theme */
+    --bg-primary: #312e2b;
+    --bg-secondary: #272522;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    
+    /* Accent colors */
+    --accent-primary: #81b64c;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+main {
+    width: 100%;
+    max-width: 800px;
+    padding: 2rem;
+}
+
+/* Welcome page styles */
+.welcome-container {
+    text-align: center;
+}
+
+.welcome-container h1 {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.welcome-container .tagline {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.welcome-container .menu {
+    background-color: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: 8px;
+}
+
+.welcome-container .menu p {
+    margin: 0.5rem 0;
+}

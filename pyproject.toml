@@ -14,6 +14,7 @@ authors = [
 ]
 dependencies = [
     "blessed>=1.20.0",
+    "flask>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,7 @@ dev = [
 
 [project.scripts]
 pychess = "pychess.main:main"
+pychess-web = "pychess.web.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
