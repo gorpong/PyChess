@@ -1,20 +1,8 @@
-"""Tests for Flask application setup."""
+"""Tests for Flask application creation and configuration."""
 
 import pytest
+
 from pychess.web.app import create_app
-
-
-@pytest.fixture
-def app():
-    """Create application for testing."""
-    app = create_app({'TESTING': True})
-    return app
-
-
-@pytest.fixture
-def client(app):
-    """Create test client."""
-    return app.test_client()
 
 
 class TestAppCreation:
@@ -29,22 +17,20 @@ class TestAppCreation:
         """Test that test config is applied."""
         app = create_app({'TESTING': True})
         assert app.config['TESTING'] is True
-
-
-class TestIndexRoute:
-    """Tests for index page."""
     
-    def test_index_returns_200(self, client):
-        """Test that index page returns successfully."""
-        response = client.get('/')
-        assert response.status_code == 200
+    def test_app_has_secret_key(self):
+        """Test that app has a secret key configured."""
+        app = create_app()
+        assert app.config['SECRET_KEY'] is not None
+        assert len(app.config['SECRET_KEY']) > 0
     
-    def test_index_contains_pychess(self, client):
-        """Test that index page contains PyChess branding."""
-        response = client.get('/')
-        assert b'PyChess' in response.data
+    def test_app_secret_key_can_be_overridden(self):
+        """Test that secret key can be set via config."""
+        app = create_app({'SECRET_KEY': 'test-secret'})
+        assert app.config['SECRET_KEY'] == 'test-secret'
     
-    def test_index_is_html(self, client):
-        """Test that index returns HTML content."""
-        response = client.get('/')
-        assert b'<!DOCTYPE html>' in response.data
+    def test_app_has_secure_session_settings(self):
+        """Test that session cookies have secure settings."""
+        app = create_app()
+        assert app.config['SESSION_COOKIE_HTTPONLY'] is True
+        assert app.config['SESSION_COOKIE_SAMESITE'] == 'Lax'

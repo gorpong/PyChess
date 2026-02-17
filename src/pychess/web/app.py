@@ -1,6 +1,7 @@
 """Flask application factory for PyChess web UI."""
 
 import os
+import secrets
 
 from flask import Flask
 
@@ -23,8 +24,15 @@ def create_app(test_config: dict | None = None) -> Flask:
     )
     
     # Default configuration
+    # Generate a secure secret key if not provided
+    default_secret = os.environ.get('SECRET_KEY')
+    if default_secret is None:
+        default_secret = secrets.token_hex(32)
+    
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev-key-change-in-production'),
+        SECRET_KEY=default_secret,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
     )
     
     # Override with test config if provided
