@@ -1,0 +1,43 @@
+<div id="promotion-dialog" class="promotion-overlay">
+    <div class="promotion-modal">
+        <h3>Choose promotion piece</h3>
+        <div class="promotion-choices">
+            <button class="promotion-choice"
+                    hx-post="/api/promote"
+                    hx-vals='{"piece": "Q"}'
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                <img src="{{ url_for('static', filename='images/pieces/' + promotion_color + 'Q.svg') }}" 
+                     alt="Queen">
+                <span>Queen</span>
+            </button>
+            <button class="promotion-choice"
+                    hx-post="/api/promote"
+                    hx-vals='{"piece": "R"}'
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                <img src="{{ url_for('static', filename='images/pieces/' + promotion_color + 'R.svg') }}" 
+                     alt="Rook">
+                <span>Rook</span>
+            </button>
+            <button class="promotion-choice"
+                    hx-post="/api/promote"
+                    hx-vals='{"piece": "B"}'
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                <img src="{{ url_for('static', filename='images/pieces/' + promotion_color + 'B.svg') }}" 
+                     alt="Bishop">
+                <span>Bishop</span>
+            </button>
+            <button class="promotion-choice"
+                    hx-post="/api/promote"
+                    hx-vals='{"piece": "N"}'
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                <img src="{{ url_for('static', filename='images/pieces/' + promotion_color + 'N.svg') }}" 
+                     alt="Knight">
+                <span>Knight</span>
+            </button>
+        </div>
+    </div>
+</div>

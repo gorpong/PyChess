@@ -1,0 +1,20 @@
+<div class="history-panel">
+    <h3>Move History</h3>
+    <div class="move-list-container">
+        {% if move_pairs %}
+            <ol class="move-list">
+                {% for move_num, white_move, black_move in move_pairs %}
+                    <li>
+                        <span class="move-number">{{ move_num }}.</span>
+                        <span class="white-move">{{ white_move }}</span>
+                        {% if black_move %}
+                            <span class="black-move">{{ black_move }}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ol>
+        {% else %}
+            <p class="no-moves">No moves yet</p>
+        {% endif %}
+    </div>
+</div>

@@ -23,12 +23,40 @@
                 <span>h</span>
             </div>
         </div>
+        
+        {% if show_promotion %}
+            {% include "partials/promotion.html" %}
+        {% endif %}
+        
+        {% if game_result %}
+            <div class="game-over-overlay">
+                <div class="game-over-modal">
+                    <h2>Game Over</h2>
+                    <p class="result">
+                        {% if game_result == '1-0' %}
+                            White wins!
+                        {% elif game_result == '0-1' %}
+                            Black wins!
+                        {% else %}
+                            Draw!
+                        {% endif %}
+                    </p>
+                    <p class="result-code">{{ game_result }}</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
     
     <div class="info-section">
         <div class="status-panel">
-            <p class="turn-indicator">{{ game.turn | title }} to move</p>
-            {% if game.is_check %}
+            <p class="turn-indicator">
+                {% if game_result %}
+                    Game Over
+                {% else %}
+                    {{ game.turn | title }} to move
+                {% endif %}
+            </p>
+            {% if game.is_check and not game_result %}
                 <p class="check-warning">Check!</p>
             {% endif %}
             {% for message in status_messages %}
@@ -37,21 +65,32 @@
         </div>
         
         <div class="controls-panel">
-            {% if hints_allowed %}
-                <button class="btn btn-hints{% if show_hints %} active{% endif %}"
-                        hx-post="/api/toggle-hints"
-                        hx-target="#game-container"
-                        hx-swap="innerHTML"
-                        {% if not selected_square %}disabled{% endif %}>
-                    {% if show_hints %}Hide Hints{% else %}Show Hints{% endif %}
-                </button>
-                {% if not selected_square %}
-                    <p class="hint-tip">Select a piece to enable hints</p>
+            {% if not game_result %}
+                {% if hints_allowed %}
+                    <button class="btn btn-hints{% if show_hints %} active{% endif %}"
+                            hx-post="/api/toggle-hints"
+                            hx-target="#game-container"
+                            hx-swap="innerHTML"
+                            {% if not selected_square %}disabled{% endif %}>
+                        {% if show_hints %}Hide Hints{% else %}Show Hints{% endif %}
+                    </button>
+                    {% if not selected_square %}
+                        <p class="hint-tip">Select a piece to enable hints</p>
+                    {% endif %}
+                {% else %}
+                    <p class="hint-tip">Hints disabled in Hard mode</p>
                 {% endif %}
-            {% else %}
-                <p class="hint-tip">Hints disabled in Hard mode</p>
             {% endif %}
+            
+            <button class="btn btn-undo"
+                    hx-post="/api/undo"
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                Undo
+            </button>
         </div>
+        
+        {% include "partials/history.html" %}
         
         <div class="mode-panel">
             <p class="current-mode">Mode: {{ game_mode | title }}</p>

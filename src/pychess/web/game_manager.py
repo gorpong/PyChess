@@ -11,10 +11,14 @@ from typing import Optional
 
 from pychess.ai.engine import AIEngine, Difficulty
 from pychess.model.game_state import GameState
-from pychess.model.piece import Color
+from pychess.model.piece import Color, Piece
 from pychess.model.square import Square
+from pychess.notation.san import move_to_san
+from pychess.notation.pgn import _apply_san_move
 from pychess.persistence.save_manager import SaveManager
-from pychess.rules.validator import get_legal_moves
+from pychess.rules.move import Move
+from pychess.rules.validator import get_legal_moves, is_in_check
+from pychess.rules.game_logic import get_game_result
 
 
 # Map mode strings to AI difficulty
@@ -26,6 +30,14 @@ MODE_TO_DIFFICULTY = {
 
 # Modes where hints are allowed
 HINTS_ALLOWED_MODES = {'multiplayer', 'easy', 'medium'}
+
+# Map piece letters to Piece enum
+PROMOTION_PIECES = {
+    'Q': Piece.QUEEN,
+    'R': Piece.ROOK,
+    'B': Piece.BISHOP,
+    'N': Piece.KNIGHT,
+}
 
 
 @dataclass
@@ -44,6 +56,8 @@ class WebGameSession:
         last_move: Tuple of (from_square, to_square) for highlighting.
         show_hints: Whether to currently display legal move hints.
         status_messages: List of status messages to display.
+        pending_promotion: Move awaiting promotion piece choice, if any.
+        game_result: Game result if game has ended ('1-0', '0-1', '1/2-1/2').
     """
     session_id: str
     game_state: GameState
@@ -56,11 +70,18 @@ class WebGameSession:
     last_move: Optional[tuple[Square, Square]] = None
     show_hints: bool = False
     status_messages: list[str] = field(default_factory=list)
+    pending_promotion: Optional[Move] = None
+    game_result: Optional[str] = None
     
     @property
     def hints_allowed(self) -> bool:
         """Check if hints are allowed in this game mode."""
         return self.game_mode in HINTS_ALLOWED_MODES
+    
+    @property
+    def is_game_over(self) -> bool:
+        """Check if the game has ended."""
+        return self.game_result is not None
     
     def get_legal_moves_for_selected(self) -> set[Square]:
         """Get legal destination squares for the selected piece.
@@ -175,15 +196,25 @@ class GameManager:
     def select_square(self, session: WebGameSession, square: Square) -> WebGameSession:
         """Handle square selection logic.
         
+        If a piece is already selected and the clicked square is a legal
+        destination, this will execute the move instead of selecting.
+        
         Args:
             session: Current game session.
             square: Square that was clicked.
             
         Returns:
-            Updated session with new selection state.
+            Updated session with new selection state or after move.
         """
+        # Don't allow interaction if game is over
+        if session.is_game_over:
+            return session
+        
+        # Don't allow interaction if waiting for promotion choice
+        if session.pending_promotion:
+            return session
+        
         game_state = session.game_state
-        piece_info = game_state.board.get(square)
         
         # If clicking the already-selected square, deselect it
         if session.selected_square == square:
@@ -192,10 +223,22 @@ class GameManager:
             session.status_messages = ['Selection cleared']
             return session
         
-        # If a piece is already selected, this might be a move attempt
-        # (handled in Phase 6 - for now just reselect)
+        # If a piece is already selected, check if this is a move attempt
+        if session.selected_square:
+            # Check if clicked square is a legal destination
+            legal_moves = get_legal_moves(game_state)
+            matching_moves = [
+                m for m in legal_moves
+                if m.from_square == session.selected_square and m.to_square == square
+            ]
+            
+            if matching_moves:
+                # This is a move attempt
+                return self._execute_move(session, matching_moves)
         
-        # Check if square has a piece belonging to current player
+        # Otherwise, try to select a piece
+        piece_info = game_state.board.get(square)
+        
         if piece_info:
             piece_type, piece_color = piece_info
             if piece_color == game_state.turn:
@@ -215,6 +258,202 @@ class GameManager:
         
         return session
     
+    def _execute_move(
+        self, 
+        session: WebGameSession, 
+        matching_moves: list[Move]
+    ) -> WebGameSession:
+        """Execute a move or prompt for promotion.
+        
+        Args:
+            session: Current game session.
+            matching_moves: List of legal moves matching the from/to squares.
+                           Multiple moves indicate promotion options.
+                           
+        Returns:
+            Updated session after move or with promotion pending.
+        """
+        # Check if this is a promotion (multiple moves = different promotion pieces)
+        promotion_moves = [m for m in matching_moves if m.promotion is not None]
+        
+        if len(promotion_moves) > 1:
+            # Need to ask for promotion piece
+            # Store the base move info and wait for piece selection
+            session.pending_promotion = matching_moves[0]  # Store any, we'll update promotion
+            session.status_messages = ['Choose a piece for promotion']
+            return session
+        
+        # Single move - execute it
+        move = matching_moves[0]
+        return self._apply_move(session, move)
+    
+    def _apply_move(self, session: WebGameSession, move: Move) -> WebGameSession:
+        """Apply a move to the game state.
+        
+        Args:
+            session: Current game session.
+            move: The move to apply.
+            
+        Returns:
+            Updated session after move.
+        """
+        # Save state for undo
+        session.state_history.append(session.game_state)
+        
+        # Generate SAN before applying move
+        san = move_to_san(session.game_state, move)
+        
+        # Apply the move
+        session.game_state = _apply_san_move(session.game_state, san, move)
+        
+        # Update last move for highlighting
+        session.last_move = (move.from_square, move.to_square)
+        
+        # Clear selection
+        session.selected_square = None
+        session.show_hints = False
+        session.pending_promotion = None
+        
+        # Check for game end
+        result = get_game_result(session.game_state)
+        if result:
+            session.game_result = result
+            session.status_messages = [f'Move: {san}', self._result_message(result)]
+            return session
+        
+        # Set status message
+        session.status_messages = [f'Move: {san}']
+        
+        # If playing against AI and it's AI's turn, make AI move
+        if session.ai_engine and session.game_state.turn == Color.BLACK:
+            session = self._do_ai_move(session, san)
+        
+        return session
+    
+    def _do_ai_move(self, session: WebGameSession, player_san: str) -> WebGameSession:
+        """Execute the AI's move.
+        
+        Args:
+            session: Current game session.
+            player_san: The player's move in SAN notation for status message.
+            
+        Returns:
+            Updated session after AI move.
+        """
+        try:
+            ai_move = session.ai_engine.select_move(session.game_state)
+            
+            # Save state for undo
+            session.state_history.append(session.game_state)
+            
+            # Generate SAN and apply
+            ai_san = move_to_san(session.game_state, ai_move)
+            session.game_state = _apply_san_move(session.game_state, ai_san, ai_move)
+            
+            # Update last move
+            session.last_move = (ai_move.from_square, ai_move.to_square)
+            
+            # Check for game end
+            result = get_game_result(session.game_state)
+            if result:
+                session.game_result = result
+                session.status_messages = [
+                    f'Your move: {player_san}',
+                    f'AI played: {ai_san}',
+                    self._result_message(result),
+                ]
+            else:
+                session.status_messages = [
+                    f'Your move: {player_san}',
+                    f'AI played: {ai_san}',
+                ]
+                
+        except ValueError:
+            session.status_messages = [f'Your move: {player_san}', 'AI has no legal moves']
+        
+        return session
+    
+    def _result_message(self, result: str) -> str:
+        """Get a human-readable message for a game result.
+        
+        Args:
+            result: Game result string ('1-0', '0-1', '1/2-1/2').
+            
+        Returns:
+            Human-readable result message.
+        """
+        if result == '1-0':
+            return 'Game Over: White wins!'
+        elif result == '0-1':
+            return 'Game Over: Black wins!'
+        else:
+            return 'Game Over: Draw!'
+    
+    def complete_promotion(self, session: WebGameSession, piece_letter: str) -> WebGameSession:
+        """Complete a pending promotion with the chosen piece.
+        
+        Args:
+            session: Current game session with pending promotion.
+            piece_letter: Letter of chosen piece ('Q', 'R', 'B', 'N').
+            
+        Returns:
+            Updated session after promotion move.
+        """
+        if not session.pending_promotion:
+            session.status_messages = ['No promotion pending']
+            return session
+        
+        piece = PROMOTION_PIECES.get(piece_letter.upper())
+        if not piece:
+            session.status_messages = ['Invalid promotion piece']
+            return session
+        
+        # Create the promotion move
+        base_move = session.pending_promotion
+        promotion_move = Move(
+            from_square=base_move.from_square,
+            to_square=base_move.to_square,
+            promotion=piece,
+        )
+        
+        return self._apply_move(session, promotion_move)
+    
+    def undo_move(self, session: WebGameSession) -> WebGameSession:
+        """Undo the last move(s).
+        
+        In AI mode, undoes both the AI's move and the player's move.
+        In multiplayer, undoes a single move.
+        
+        Args:
+            session: Current game session.
+            
+        Returns:
+            Updated session after undo.
+        """
+        if not session.state_history:
+            session.status_messages = ['No moves to undo']
+            return session
+        
+        # Clear any pending promotion
+        session.pending_promotion = None
+        session.game_result = None
+        
+        # In AI mode, undo both AI's move and player's move
+        if session.ai_engine and len(session.state_history) >= 2:
+            session.state_history.pop()  # AI's move
+            session.game_state = session.state_history.pop()  # Player's move
+            session.status_messages = ['Both moves undone - your turn again']
+        else:
+            session.game_state = session.state_history.pop()
+            session.status_messages = ['Move undone']
+        
+        # Clear selection and last move
+        session.selected_square = None
+        session.show_hints = False
+        session.last_move = None
+        
+        return session
+    
     def toggle_hints(self, session: WebGameSession) -> WebGameSession:
         """Toggle hint display for the current selection.
         
@@ -224,6 +463,10 @@ class GameManager:
         Returns:
             Updated session with toggled hints state.
         """
+        if session.is_game_over:
+            session.status_messages = ['Game is over']
+            return session
+        
         if not session.hints_allowed:
             session.status_messages = ['Hints are not available in Hard mode']
             return session
@@ -280,6 +523,11 @@ class GameManager:
             game_name=game_name,
             status_messages=[f'Loaded game: {game_name}'],
         )
+        
+        # Check if game is already over
+        result = get_game_result(game_state)
+        if result:
+            session.game_result = result
         
         # Restore elapsed time
         if headers.total_time_seconds > 0:

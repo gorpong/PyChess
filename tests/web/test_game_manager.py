@@ -426,3 +426,201 @@ class TestGameManagerToggleHints:
         assert session.show_hints is False
         assert 'not available in Hard mode' in session.status_messages[0]
 
+
+
+class TestGameManagerMoveExecution:
+    """Tests for move execution in GameManager."""
+    
+    def test_move_via_selection(self, manager):
+        """Test executing a move by selecting destination."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        # Select e2 pawn
+        session = manager.select_square(session, Square(file='e', rank=2))
+        # Click e4 (legal destination)
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # Pawn should have moved
+        assert session.game_state.board.get(Square(file='e', rank=4)) is not None
+        assert session.game_state.board.get(Square(file='e', rank=2)) is None
+    
+    def test_move_updates_turn(self, manager):
+        """Test that move updates turn."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        assert session.game_state.turn == Color.BLACK
+    
+    def test_move_clears_selection(self, manager):
+        """Test that move clears selection."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        assert session.selected_square is None
+    
+    def test_move_sets_last_move(self, manager):
+        """Test that move sets last_move for highlighting."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        assert session.last_move == (
+            Square(file='e', rank=2),
+            Square(file='e', rank=4),
+        )
+    
+    def test_move_adds_to_history(self, manager):
+        """Test that move is added to move history."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        assert 'e4' in session.game_state.move_history
+    
+    def test_move_adds_state_to_history(self, manager):
+        """Test that previous state is saved for undo."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        assert len(session.state_history) == 1
+    
+    def test_illegal_move_not_executed(self, manager):
+        """Test that clicking non-legal square doesn't move."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        # e5 is not a legal destination for e2 pawn
+        session = manager.select_square(session, Square(file='e', rank=5))
+        
+        # Should have cleared selection, not moved
+        assert session.game_state.board.get(Square(file='e', rank=2)) is not None
+
+
+class TestGameManagerPromotion:
+    """Tests for pawn promotion."""
+    
+    def test_complete_promotion_to_queen(self, manager):
+        """Test completing promotion to queen."""
+        from pychess.rules.move import Move
+        
+        session = manager.create_game('test', 'multiplayer')
+        session.pending_promotion = Move(
+            from_square=Square(file='e', rank=7),
+            to_square=Square(file='e', rank=8),
+        )
+        
+        session = manager.complete_promotion(session, 'Q')
+        
+        assert session.pending_promotion is None
+    
+    def test_complete_promotion_invalid_piece(self, manager):
+        """Test that invalid promotion piece is rejected."""
+        from pychess.rules.move import Move
+        
+        session = manager.create_game('test', 'multiplayer')
+        session.pending_promotion = Move(
+            from_square=Square(file='e', rank=7),
+            to_square=Square(file='e', rank=8),
+        )
+        
+        session = manager.complete_promotion(session, 'X')
+        
+        assert 'Invalid promotion piece' in session.status_messages[0]
+    
+    def test_complete_promotion_no_pending(self, manager):
+        """Test promotion without pending promotion."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.complete_promotion(session, 'Q')
+        
+        assert 'No promotion pending' in session.status_messages[0]
+
+
+class TestGameManagerUndo:
+    """Tests for undo functionality."""
+    
+    def test_undo_single_move(self, manager):
+        """Test undoing a single move in multiplayer."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        session = manager.undo_move(session)
+        
+        assert session.game_state.turn == Color.WHITE
+        assert session.game_state.board.get(Square(file='e', rank=2)) is not None
+    
+    def test_undo_no_moves(self, manager):
+        """Test undo with no moves."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.undo_move(session)
+        
+        assert 'No moves to undo' in session.status_messages[0]
+    
+    def test_undo_clears_selection(self, manager):
+        """Test that undo clears selection."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        session.selected_square = Square(file='d', rank=2)
+        
+        session = manager.undo_move(session)
+        
+        assert session.selected_square is None
+    
+    def test_undo_clears_last_move(self, manager):
+        """Test that undo clears last move highlight."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        session = manager.undo_move(session)
+        
+        assert session.last_move is None
+
+
+class TestGameManagerGameEnd:
+    """Tests for game end detection."""
+    
+    def test_checkmate_detected(self, manager):
+        """Test that checkmate is detected."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        # Fool's mate: 1. f3 e5 2. g4 Qh4#
+        moves = [
+            (Square(file='f', rank=2), Square(file='f', rank=3)),
+            (Square(file='e', rank=7), Square(file='e', rank=5)),
+            (Square(file='g', rank=2), Square(file='g', rank=4)),
+            (Square(file='d', rank=8), Square(file='h', rank=4)),
+        ]
+        
+        for from_sq, to_sq in moves:
+            session = manager.select_square(session, from_sq)
+            session = manager.select_square(session, to_sq)
+        
+        assert session.game_result == '0-1'
+        assert session.is_game_over
+    
+    def test_game_over_blocks_moves(self, manager):
+        """Test that moves are blocked after game over."""
+        session = manager.create_game('test', 'multiplayer')
+        session.game_result = '1-0'
+        
+        original_state = session.game_state
+        session = manager.select_square(session, Square(file='e', rank=2))
+        
+        # Should not have selected anything
+        assert session.selected_square is None
+        assert session.game_state == original_state

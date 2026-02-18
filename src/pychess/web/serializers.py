@@ -152,3 +152,24 @@ def board_to_template_data(
         rows.append(row)
     
     return rows
+
+
+def format_move_history(move_history: list[str]) -> list[tuple[int, str, Optional[str]]]:
+    """Format move history into pairs for display.
+    
+    Args:
+        move_history: List of SAN move strings.
+        
+    Returns:
+        List of tuples (move_number, white_move, black_move).
+        black_move may be None if white just moved.
+    """
+    pairs = []
+    
+    for i in range(0, len(move_history), 2):
+        move_num = (i // 2) + 1
+        white_move = move_history[i]
+        black_move = move_history[i + 1] if i + 1 < len(move_history) else None
+        pairs.append((move_num, white_move, black_move))
+    
+    return pairs

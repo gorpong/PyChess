@@ -14,6 +14,9 @@
     --last-move-dark: #dac34b;
     --check: rgba(255, 0, 0, 0.5);
     
+    /* Hover colors - using filter instead of box-shadow for visibility */
+    --hover-brightness: 1.1;
+    
     /* UI colors - dark theme */
     --bg-primary: #312e2b;
     --bg-secondary: #272522;
@@ -27,6 +30,9 @@
     --accent-hover: #9ece5a;
     --danger: #c33;
     --danger-hover: #d44;
+    
+    /* Overlay colors */
+    --overlay-bg: rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -86,6 +92,7 @@ main {
 
 .board-section {
     flex-shrink: 0;
+    position: relative;
 }
 
 .info-section {
@@ -93,6 +100,7 @@ main {
     flex-direction: column;
     gap: 1rem;
     min-width: 200px;
+    max-width: 280px;
     text-align: left;
 }
 
@@ -126,12 +134,14 @@ main {
     background-color: var(--bg-secondary);
     padding: 1rem;
     border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .hint-tip {
     color: var(--text-muted);
     font-size: 0.85rem;
-    margin-top: 0.5rem;
 }
 
 /* Buttons */
@@ -144,7 +154,7 @@ main {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .btn:disabled {
@@ -164,6 +174,67 @@ main {
 .btn-hints.active {
     background-color: var(--accent-hover);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.btn-undo {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--text-muted);
+}
+
+.btn-undo:hover:not(:disabled) {
+    background-color: var(--bg-primary);
+    border-color: var(--text-secondary);
+}
+
+/* History panel */
+.history-panel {
+    background-color: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.history-panel h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.move-list-container {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.move-list {
+    list-style: none;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 0.9rem;
+}
+
+.move-list li {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.move-list li:last-child {
+    border-bottom: none;
+}
+
+.move-number {
+    color: var(--text-muted);
+    min-width: 2rem;
+}
+
+.white-move, .black-move {
+    min-width: 3.5rem;
+}
+
+.no-moves {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.9rem;
 }
 
 /* Mode panel */
@@ -245,11 +316,11 @@ main {
     justify-content: center;
     aspect-ratio: 1;
     cursor: pointer;
-    transition: box-shadow 0.1s ease;
+    transition: filter 0.1s ease;
 }
 
 .square:hover {
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+    filter: brightness(var(--hover-brightness));
 }
 
 .square.light {
@@ -276,6 +347,7 @@ main {
 
 .square.selected:hover {
     box-shadow: inset 0 0 0 4px var(--selected);
+    filter: brightness(var(--hover-brightness));
 }
 
 /* Legal move indicators */
@@ -306,6 +378,104 @@ main {
     object-fit: contain;
     user-select: none;
     pointer-events: none;
+}
+
+/* Promotion dialog */
+.promotion-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--overlay-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.promotion-modal {
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.promotion-modal h3 {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.promotion-choices {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.promotion-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background-color: var(--bg-tertiary);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.promotion-choice:hover {
+    border-color: var(--accent-primary);
+    background-color: var(--bg-primary);
+}
+
+.promotion-choice img {
+    width: 48px;
+    height: 48px;
+}
+
+.promotion-choice span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Game over overlay */
+.game-over-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--overlay-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.game-over-modal {
+    background-color: var(--bg-secondary);
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.game-over-modal h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.game-over-modal .result {
+    font-size: 1.25rem;
+    color: var(--accent-primary);
+    margin-bottom: 0.25rem;
+}
+
+.game-over-modal .result-code {
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
 }
 
 /* Responsive adjustments */
