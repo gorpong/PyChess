@@ -783,23 +783,26 @@ class TestGameManagerAIIntegration:
     def test_ai_no_legal_moves_handled(self, manager):
         """Test handling when AI has no legal moves (stalemate/checkmate)."""
         session = manager.create_game('test', 'easy')
-        
+
         # Set up stalemate position for Black after White moves
+        # Black king on h8, White queen on e6, White king on g6
+        # After Qf7, Black has no legal moves but is not in check = stalemate
         from pychess.model.board import Board
         from pychess.model.piece import Piece
-        
+
         board = Board.empty()
         board = board.set(Square(file='h', rank=8), Piece.KING, Color.BLACK)
-        board = board.set(Square(file='f', rank=7), Piece.QUEEN, Color.WHITE)
+        board = board.set(Square(file='e', rank=6), Piece.QUEEN, Color.WHITE)
         board = board.set(Square(file='g', rank=6), Piece.KING, Color.WHITE)
-        
+
         session.game_state = session.game_state.with_board(board)
         session.state_history = []
-        
-        # White moves queen to g7, stalemating Black
+
+        # White moves queen to f7, stalemating Black
+        # f7 doesn't give check, but covers g8 and h7, leaving Black with no moves
+        session = manager.select_square(session, Square(file='e', rank=6))
         session = manager.select_square(session, Square(file='f', rank=7))
-        session = manager.select_square(session, Square(file='g', rank=7))
-        
+
         # Game should be over (stalemate = draw)
         assert session.game_result == '1/2-1/2'
         assert session.is_game_over
