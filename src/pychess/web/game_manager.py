@@ -321,12 +321,14 @@ class GameManager:
             session.status_messages = [f'Move: {san}', self._result_message(result)]
             return session
         
-        # Set status message
-        session.status_messages = [f'Move: {san}']
-        
         # If playing against AI and it's AI's turn, make AI move
         if session.ai_engine and session.game_state.turn == Color.BLACK:
+            # Set thinking message (visible if AI takes time)
+            session.status_messages = [f'Your move: {san}', 'AI is thinking...']
             session = self._do_ai_move(session, san)
+        else:
+            # Set status message for multiplayer or after AI responds
+            session.status_messages = [f'Move: {san}']
         
         return session
     

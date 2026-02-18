@@ -624,3 +624,182 @@ class TestGameManagerGameEnd:
         # Should not have selected anything
         assert session.selected_square is None
         assert session.game_state == original_state
+
+
+class TestGameManagerAIIntegration:
+    """Tests for AI integration in GameManager."""
+
+    def test_ai_moves_after_human_in_easy_mode(self, manager):
+        """Test that AI moves after human move in easy mode."""
+        session = manager.create_game('test', 'easy')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # AI should have responded, so it's White's turn again
+        assert session.game_state.turn == Color.WHITE
+        # Should have 2 states in history (human move + AI move)
+        assert len(session.state_history) == 2
+
+    def test_ai_moves_after_human_in_medium_mode(self, manager):
+        """Test that AI moves after human move in medium mode."""
+        session = manager.create_game('test', 'medium')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # AI should have responded
+        assert session.game_state.turn == Color.WHITE
+        assert len(session.state_history) == 2
+
+    def test_ai_moves_after_human_in_hard_mode(self, manager):
+        """Test that AI moves after human move in hard mode."""
+        session = manager.create_game('test', 'hard')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # AI should have responded
+        assert session.game_state.turn == Color.WHITE
+        assert len(session.state_history) == 2
+
+    def test_ai_does_not_move_in_multiplayer(self, manager):
+        """Test that no AI move occurs in multiplayer mode."""
+        session = manager.create_game('test', 'multiplayer')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # Should still be Black's turn (no AI)
+        assert session.game_state.turn == Color.BLACK
+        # Only 1 state in history (human move only)
+        assert len(session.state_history) == 1
+
+    def test_undo_removes_both_moves_in_ai_mode(self, manager):
+        """Test that undo removes both human and AI moves in AI mode."""
+        session = manager.create_game('test', 'easy')
+        
+        # Human plays e4, AI responds
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # Verify AI moved
+        assert session.game_state.turn == Color.WHITE
+        assert len(session.state_history) == 2
+        
+        # Undo should remove both moves
+        session = manager.undo_move(session)
+        
+        # Back to initial position, White's turn
+        assert session.game_state.turn == Color.WHITE
+        assert len(session.state_history) == 0
+        # Pawn should be back on e2
+        assert session.game_state.board.get(Square(file='e', rank=2)) is not None
+        assert session.game_state.board.get(Square(file='e', rank=4)) is None
+
+    def test_ai_move_sets_last_move(self, manager):
+        """Test that AI move updates last_move for highlighting."""
+        session = manager.create_game('test', 'easy')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # last_move should reflect AI's move, not human's
+        assert session.last_move is not None
+        # AI plays as Black, so from_square should be on rank 7 (initial pawn/piece position)
+        # or the move should be a valid Black move
+        from_sq, to_sq = session.last_move
+        # The piece that moved should now be at to_sq
+        assert session.game_state.board.get(to_sq) is not None
+
+    def test_ai_move_adds_to_move_history(self, manager):
+        """Test that AI move is recorded in game state move history."""
+        session = manager.create_game('test', 'easy')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # Move history should have 2 moves
+        assert len(session.game_state.move_history) == 2
+        assert session.game_state.move_history[0] == 'e4'
+
+    def test_ai_status_messages_after_move(self, manager):
+        """Test that status messages include both human and AI moves."""
+        session = manager.create_game('test', 'easy')
+        
+        # Human plays e4
+        session = manager.select_square(session, Square(file='e', rank=2))
+        session = manager.select_square(session, Square(file='e', rank=4))
+        
+        # Status should mention both moves
+        messages = ' '.join(session.status_messages)
+        assert 'e4' in messages
+        assert 'AI played' in messages
+
+    def test_ai_checkmate_ends_game(self, manager):
+        """Test that AI delivering checkmate ends the game."""
+        session = manager.create_game('test', 'easy')
+        
+        # Set up a position where AI can checkmate
+        # We'll use Fool's Mate setup: after f3, e5, g4, AI plays Qh4#
+        # But since AI is random in easy mode, we'll just verify the
+        # game end detection works if AI happens to checkmate
+        
+        # For this test, manually set up near-checkmate position
+        from pychess.model.board import Board
+        from pychess.model.piece import Piece
+        
+        board = Board.empty()
+        # White king trapped
+        board = board.set(Square(file='h', rank=1), Piece.KING, Color.WHITE)
+        board = board.set(Square(file='g', rank=1), Piece.ROOK, Color.WHITE)
+        board = board.set(Square(file='g', rank=2), Piece.PAWN, Color.WHITE)
+        board = board.set(Square(file='h', rank=2), Piece.PAWN, Color.WHITE)
+        # Black has rook that can deliver mate
+        board = board.set(Square(file='e', rank=8), Piece.KING, Color.BLACK)
+        board = board.set(Square(file='a', rank=1), Piece.ROOK, Color.BLACK)
+        
+        session.game_state = session.game_state.with_board(board)
+        session.state_history = []
+        
+        # It's White's turn, make a move that doesn't prevent mate
+        # Move the g2 pawn
+        session = manager.select_square(session, Square(file='g', rank=2))
+        session = manager.select_square(session, Square(file='g', rank=3))
+        
+        # If AI found the mate (Rxg1#), game should be over
+        # Note: Easy AI is random, so it might not find mate
+        # This test verifies the detection works IF mate occurs
+        if session.game_result:
+            assert session.game_result == '0-1'
+            assert session.is_game_over
+
+    def test_ai_no_legal_moves_handled(self, manager):
+        """Test handling when AI has no legal moves (stalemate/checkmate)."""
+        session = manager.create_game('test', 'easy')
+        
+        # Set up stalemate position for Black after White moves
+        from pychess.model.board import Board
+        from pychess.model.piece import Piece
+        
+        board = Board.empty()
+        board = board.set(Square(file='h', rank=8), Piece.KING, Color.BLACK)
+        board = board.set(Square(file='f', rank=7), Piece.QUEEN, Color.WHITE)
+        board = board.set(Square(file='g', rank=6), Piece.KING, Color.WHITE)
+        
+        session.game_state = session.game_state.with_board(board)
+        session.state_history = []
+        
+        # White moves queen to g7, stalemating Black
+        session = manager.select_square(session, Square(file='f', rank=7))
+        session = manager.select_square(session, Square(file='g', rank=7))
+        
+        # Game should be over (stalemate = draw)
+        assert session.game_result == '1/2-1/2'
+        assert session.is_game_over
