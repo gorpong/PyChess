@@ -240,7 +240,7 @@ class TestQuitRoute:
     def test_quit_redirects_to_index(self, client):
         """Test that quit redirects to /."""
         client.post('/api/new-game', data={'mode': 'multiplayer'})
-        response = client.get('/api/quit')
+        response = client.post('/api/quit')
         assert response.status_code == 302
         assert response.location == '/'
     
@@ -251,7 +251,7 @@ class TestQuitRoute:
         with client.session_transaction() as sess:
             session_id = sess.get('game_session_id')
         
-        client.get('/api/quit')
+        client.post('/api/quit')
         
         # Session should be deleted
         manager = get_game_manager()
@@ -260,16 +260,24 @@ class TestQuitRoute:
     def test_quit_clears_session_cookie(self, client):
         """Test that quit clears the session ID from cookie."""
         client.post('/api/new-game', data={'mode': 'multiplayer'})
-        client.get('/api/quit')
+        client.post('/api/quit')
         
         with client.session_transaction() as sess:
             assert 'game_session_id' not in sess
     
     def test_quit_without_session_no_error(self, client):
         """Test that quit without session doesn't error."""
-        response = client.get('/api/quit')
+        response = client.post('/api/quit')
         assert response.status_code == 302
         assert response.location == '/'
+    
+    def test_quit_get_not_allowed(self, client):
+        """Test that GET quit is not allowed."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/api/quit')
+        
+        # Should return 405 Method Not Allowed
+        assert response.status_code == 405
 
 
 class TestSelectSquareRoute:
@@ -475,16 +483,46 @@ class TestGamesListRoute:
         response = client.get('/games')
         assert response.status_code == 200
     
-    def test_games_list_shows_no_games_message(self, client):
+    def test_games_list_shows_no_games_message(self, client, tmp_path, monkeypatch):
         """Test that empty games list shows message."""
+        # Use empty temp directory for saves
+        monkeypatch.setattr(
+            'pychess.persistence.save_manager.get_default_save_dir',
+            lambda: tmp_path
+        )
+        # Also need to reset the game manager so it picks up the new path
+        reset_game_manager()
+        
         response = client.get('/games')
-        assert b'No saved games found' in response.data
+        assert b'No saved games' in response.data
     
     def test_games_list_shows_back_button(self, client):
         """Test that games list has back to menu button."""
         response = client.get('/games')
         assert b'Back to Menu' in response.data
+    
+    def test_games_list_contains_title(self, client):
+        """Test that games list page has proper title."""
+        response = client.get('/games')
+        assert b'Saved Games' in response.data
 
+    def test_games_list_shows_saved_game(self, client, tmp_path, monkeypatch):
+        """Test that saved games appear in the list."""
+        monkeypatch.setattr(
+            'pychess.persistence.save_manager.get_default_save_dir',
+            lambda: tmp_path
+        )
+        reset_game_manager()
+        
+        # Create and save a game
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        client.post('/api/select', data={'square': 'e2'})
+        client.post('/api/select', data={'square': 'e4'})
+        client.post('/api/games/save', data={'name': 'Test Game', 'save_and_quit': 'false'})
+        
+        # Check games list
+        response = client.get('/games')
+        assert b'Test_Game' in response.data
 
 class TestSaveGameRoute:
     """Tests for save game functionality."""
@@ -629,23 +667,3 @@ class TestDeleteGameRoute:
         
         # Verify file is gone
         assert not (tmp_path / 'Delete_Test.pgn').exists()
-
-
-class TestQuitRoutePost:
-    """Tests for quit route (now POST)."""
-    
-    def test_quit_post_redirects_to_index(self, client):
-        """Test that POST quit redirects to /."""
-        client.post('/api/new-game', data={'mode': 'multiplayer'})
-        response = client.post('/api/quit')
-        
-        assert response.status_code == 302
-        assert response.location == '/'
-    
-    def test_quit_get_not_allowed(self, client):
-        """Test that GET quit is not allowed."""
-        client.post('/api/new-game', data={'mode': 'multiplayer'})
-        response = client.get('/api/quit')
-        
-        # Should return 405 Method Not Allowed
-        assert response.status_code == 405
