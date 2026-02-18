@@ -58,6 +58,7 @@ class WebGameSession:
         status_messages: List of status messages to display.
         pending_promotion: Move awaiting promotion piece choice, if any.
         game_result: Game result if game has ended ('1-0', '0-1', '1/2-1/2').
+        game_ended_during_session: True if game ended during this session (show modal).
     """
     session_id: str
     game_state: GameState
@@ -72,6 +73,7 @@ class WebGameSession:
     status_messages: list[str] = field(default_factory=list)
     pending_promotion: Optional[Move] = None
     game_result: Optional[str] = None
+    game_ended_during_session: bool = False
     
     @property
     def hints_allowed(self) -> bool:
@@ -318,9 +320,10 @@ class GameManager:
         result = get_game_result(session.game_state)
         if result:
             session.game_result = result
+            session.game_ended_during_session = True
             session.status_messages = [f'Move: {san}', self._result_message(result)]
             return session
-        
+
         # If playing against AI and it's AI's turn, make AI move
         if session.ai_engine and session.game_state.turn == Color.BLACK:
             # Set thinking message (visible if AI takes time)
@@ -359,6 +362,7 @@ class GameManager:
             result = get_game_result(session.game_state)
             if result:
                 session.game_result = result
+                session.game_ended_during_session = True
                 session.status_messages = [
                     f'Your move: {player_san}',
                     f'AI played: {ai_san}',

@@ -94,6 +94,7 @@ def build_game_context(game_session: WebGameSession) -> dict:
         'show_promotion': show_promotion,
         'promotion_color': promotion_color,
         'game_result': game_session.game_result,
+        'game_ended_during_session': game_session.game_ended_during_session,
         'show_save_dialog': False,
         'save_and_quit': False,
         'default_save_name': default_save_name,

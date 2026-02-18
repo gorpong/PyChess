@@ -32,7 +32,8 @@
             {% include "partials/save_dialog.html" %}
         {% endif %}
         
-        {% if game_result and not show_save_dialog %}
+        {# Only show modal overlay if game ended during this session #}
+        {% if game_result and game_ended_during_session and not show_save_dialog %}
             <div class="game-over-overlay">
                 <div class="game-over-modal">
                     <h2>Game Over</h2>
@@ -69,13 +70,30 @@
     
     <div class="info-section">
         <div class="status-panel">
-            <p class="turn-indicator">
-                {% if game_result %}
-                    Game Over
-                {% else %}
-                    {{ game.turn | title }} to move
-                {% endif %}
-            </p>
+            {# Show banner for loaded completed games #}
+            {% if game_result and not game_ended_during_session %}
+                <div class="game-complete-banner">
+                    <p class="banner-title">Game Complete</p>
+                    <p class="banner-result">
+                        {% if game_result == '1-0' %}
+                            White wins!
+                        {% elif game_result == '0-1' %}
+                            Black wins!
+                        {% else %}
+                            Draw!
+                        {% endif %}
+                        <span class="result-code">({{ game_result }})</span>
+                    </p>
+                </div>
+            {% else %}
+                <p class="turn-indicator">
+                    {% if game_result %}
+                        Game Over
+                    {% else %}
+                        {{ game.turn | title }} to move
+                    {% endif %}
+                </p>
+            {% endif %}
             {% if game.is_check and not game_result %}
                 <p class="check-warning">Check!</p>
             {% endif %}
@@ -100,40 +118,68 @@
                 {% else %}
                     <p class="hint-tip">Hints disabled in Hard mode</p>
                 {% endif %}
+                
+                <button class="btn btn-undo"
+                        hx-post="/api/undo"
+                        hx-target="#game-container"
+                        hx-swap="innerHTML">
+                    Undo
+                </button>
+                
+                <button class="btn btn-save"
+                        hx-post="/api/show-save-dialog"
+                        hx-vals='{"save_and_quit": "false"}'
+                        hx-target="#game-container"
+                        hx-swap="innerHTML">
+                    Save
+                </button>
+                
+                <button class="btn btn-restart"
+                        onclick="if(confirm('Restart the game? All progress will be lost.')) { document.getElementById('restart-form').submit(); }">
+                    Restart
+                </button>
+                
+                <button class="btn btn-save-quit"
+                        hx-post="/api/show-save-dialog"
+                        hx-vals='{"save_and_quit": "true"}'
+                        hx-target="#game-container"
+                        hx-swap="innerHTML">
+                    Save & Quit
+                </button>
+                
+                <button class="btn btn-quit"
+                        onclick="if(confirm('Quit without saving?')) { document.getElementById('quit-form').submit(); }">
+                    Quit
+                </button>
+            {% else %}
+                {# Completed game controls - no undo, no save (already saved or just ended) #}
+                <button class="btn btn-restart"
+                        onclick="if(confirm('Start a new game with the same settings?')) { document.getElementById('restart-form').submit(); }">
+                    New Game
+                </button>
+                
+                {% if not game_ended_during_session %}
+                    {# Loaded completed game - just show back to menu #}
+                    <button class="btn btn-quit"
+                            onclick="document.getElementById('quit-form').submit();">
+                        Back to Menu
+                    </button>
+                {% else %}
+                    {# Game just ended - show save options #}
+                    <button class="btn btn-save"
+                            hx-post="/api/show-save-dialog"
+                            hx-vals='{"save_and_quit": "false"}'
+                            hx-target="#game-container"
+                            hx-swap="innerHTML">
+                        Save
+                    </button>
+                    
+                    <button class="btn btn-quit"
+                            onclick="document.getElementById('quit-form').submit();">
+                        Quit
+                    </button>
+                {% endif %}
             {% endif %}
-            
-            <button class="btn btn-undo"
-                    hx-post="/api/undo"
-                    hx-target="#game-container"
-                    hx-swap="innerHTML">
-                Undo
-            </button>
-            
-            <button class="btn btn-save"
-                    hx-post="/api/show-save-dialog"
-                    hx-vals='{"save_and_quit": "false"}'
-                    hx-target="#game-container"
-                    hx-swap="innerHTML">
-                Save
-            </button>
-            
-            <button class="btn btn-restart"
-                    onclick="if(confirm('Restart the game? All progress will be lost.')) { document.getElementById('restart-form').submit(); }">
-                Restart
-            </button>
-            
-            <button class="btn btn-save-quit"
-                    hx-post="/api/show-save-dialog"
-                    hx-vals='{"save_and_quit": "true"}'
-                    hx-target="#game-container"
-                    hx-swap="innerHTML">
-                Save & Quit
-            </button>
-            
-            <button class="btn btn-quit"
-                    onclick="if(confirm('Quit without saving?')) { document.getElementById('quit-form').submit(); }">
-                Quit
-            </button>
         </div>
         
         {% include "partials/history.html" %}
