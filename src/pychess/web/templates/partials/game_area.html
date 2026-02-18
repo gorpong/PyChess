@@ -28,7 +28,11 @@
             {% include "partials/promotion.html" %}
         {% endif %}
         
-        {% if game_result %}
+        {% if show_save_dialog %}
+            {% include "partials/save_dialog.html" %}
+        {% endif %}
+        
+        {% if game_result and not show_save_dialog %}
             <div class="game-over-overlay">
                 <div class="game-over-modal">
                     <h2>Game Over</h2>
@@ -47,7 +51,16 @@
                                 onclick="if(confirm('Start a new game with the same settings?')) { document.getElementById('restart-form').submit(); }">
                             Play Again
                         </button>
-                        <a href="/" class="btn btn-quit">Back to Menu</a>
+                        <button class="btn btn-save-quit"
+                                hx-post="/api/show-save-dialog"
+                                hx-vals='{"save_and_quit": "true"}'
+                                hx-target="#game-container"
+                                hx-swap="innerHTML">
+                            Save & Quit
+                        </button>
+                        <form id="quit-form-gameover" action="/api/quit" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-quit">Quit</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -96,13 +109,29 @@
                 Undo
             </button>
             
+            <button class="btn btn-save"
+                    hx-post="/api/show-save-dialog"
+                    hx-vals='{"save_and_quit": "false"}'
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                Save
+            </button>
+            
             <button class="btn btn-restart"
                     onclick="if(confirm('Restart the game? All progress will be lost.')) { document.getElementById('restart-form').submit(); }">
                 Restart
             </button>
             
+            <button class="btn btn-save-quit"
+                    hx-post="/api/show-save-dialog"
+                    hx-vals='{"save_and_quit": "true"}'
+                    hx-target="#game-container"
+                    hx-swap="innerHTML">
+                Save & Quit
+            </button>
+            
             <button class="btn btn-quit"
-                    onclick="if(confirm('Quit the game? All progress will be lost.')) { window.location.href = '/api/quit'; }">
+                    onclick="if(confirm('Quit without saving?')) { document.getElementById('quit-form').submit(); }">
                 Quit
             </button>
         </div>
@@ -115,5 +144,6 @@
     </div>
 </div>
 
-<!-- Hidden form for restart -->
+<!-- Hidden forms for actions that need POST -->
 <form id="restart-form" action="/api/restart" method="POST" style="display: none;"></form>
+<form id="quit-form" action="/api/quit" method="POST" style="display: none;"></form>

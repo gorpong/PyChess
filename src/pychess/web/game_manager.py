@@ -15,7 +15,7 @@ from pychess.model.piece import Color, Piece
 from pychess.model.square import Square
 from pychess.notation.san import move_to_san
 from pychess.notation.pgn import _apply_san_move
-from pychess.persistence.save_manager import SaveManager
+from pychess.persistence.save_manager import SaveManager, InvalidGameNameError
 from pychess.rules.move import Move
 from pychess.rules.validator import get_legal_moves, is_in_check
 from pychess.rules.game_logic import get_game_result
@@ -538,6 +538,86 @@ class GameManager:
         self._sessions[session_id] = session
         return session
     
+    def save_game(
+        self,
+        session: WebGameSession,
+        name: str,
+    ) -> str:
+        """Save the current game to a PGN file.
+
+        Args:
+            session: Current game session to save.
+            name: Name for the saved game.
+
+        Returns:
+            The validated/sanitized name that was used.
+
+        Raises:
+            InvalidGameNameError: If name contains dangerous characters.
+        """
+        from pychess.notation.pgn import PGNHeaders
+        from pychess.persistence.save_manager import sanitize_game_name
+        from pychess.rules.game_logic import get_game_result
+
+        # Sanitize the name
+        sanitized_name = sanitize_game_name(name)
+
+        # Determine game result
+        result = session.game_result or get_game_result(session.game_state) or '*'
+
+        # Calculate elapsed time
+        elapsed_seconds = int(time.time() - session.start_time)
+
+        # Determine player names based on game mode
+        if session.game_mode == 'multiplayer':
+            white_name = "White"
+            black_name = "Black"
+            game_mode_header = "Multiplayer"
+        else:
+            white_name = "Human"
+            black_name = f"Computer ({session.game_mode.title()})"
+            game_mode_header = session.game_mode.title()
+
+        # Create headers
+        headers = PGNHeaders(
+            event="PyChess Web Game",
+            site="Browser",
+            white=white_name,
+            black=black_name,
+            result=result,
+            total_time_seconds=elapsed_seconds,
+            game_mode=game_mode_header,
+        )
+
+        # Save via SaveManager
+        self._save_manager.save_game(sanitized_name, session.game_state, headers)
+
+        # Update session with the saved name
+        session.game_name = sanitized_name
+        self.update_game(session)
+
+        return sanitized_name
+
+    def list_saved_games(self) -> list:
+        """List all saved games.
+
+        Returns:
+            List of SavedGameInfo objects.
+        """
+        return self._save_manager.list_games()
+
+    def delete_saved_game(self, name: str) -> None:
+        """Delete a saved game.
+
+        Args:
+            name: Name of the game to delete.
+
+        Raises:
+            InvalidGameNameError: If name contains dangerous characters.
+            FileNotFoundError: If the game doesn't exist.
+        """
+        self._save_manager.delete_game(name)
+
     def get_session_count(self) -> int:
         """Get the current number of active sessions.
         

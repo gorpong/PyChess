@@ -465,3 +465,187 @@ class TestToggleHintsRoute:
         response = client.post('/api/toggle-hints')
         
         assert b'not available in Hard mode' in response.data
+
+
+class TestGamesListRoute:
+    """Tests for saved games list route."""
+    
+    def test_games_list_returns_200(self, client):
+        """Test that games list page returns successfully."""
+        response = client.get('/games')
+        assert response.status_code == 200
+    
+    def test_games_list_shows_no_games_message(self, client):
+        """Test that empty games list shows message."""
+        response = client.get('/games')
+        assert b'No saved games found' in response.data
+    
+    def test_games_list_shows_back_button(self, client):
+        """Test that games list has back to menu button."""
+        response = client.get('/games')
+        assert b'Back to Menu' in response.data
+
+
+class TestSaveGameRoute:
+    """Tests for save game functionality."""
+    
+    def test_show_save_dialog(self, client):
+        """Test showing the save dialog."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.post('/api/show-save-dialog', data={'save_and_quit': 'false'})
+        
+        assert response.status_code == 200
+        assert b'Save Game' in response.data or b'save-dialog' in response.data
+    
+    def test_show_save_and_quit_dialog(self, client):
+        """Test showing the save & quit dialog."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.post('/api/show-save-dialog', data={'save_and_quit': 'true'})
+        
+        assert response.status_code == 200
+        assert b'Save' in response.data
+    
+    def test_cancel_save_dialog(self, client):
+        """Test canceling the save dialog."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        client.post('/api/show-save-dialog', data={'save_and_quit': 'false'})
+        response = client.post('/api/cancel-save')
+        
+        assert response.status_code == 200
+        # Should be back to normal game view
+        assert b'save-dialog' not in response.data or b'White to move' in response.data
+    
+    def test_save_game_empty_name_error(self, client):
+        """Test that saving with empty name shows error."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.post('/api/games/save', data={'name': '', 'save_and_quit': 'false'})
+        
+        assert response.status_code == 200
+        assert b'Please enter a name' in response.data
+    
+    def test_save_game_success(self, client, tmp_path, monkeypatch):
+        """Test successful game save."""
+        # Use temp directory for saves
+        monkeypatch.setattr(
+            'pychess.persistence.save_manager.get_default_save_dir',
+            lambda: tmp_path
+        )
+        
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        # Make a move first
+        client.post('/api/select', data={'square': 'e2'})
+        client.post('/api/select', data={'square': 'e4'})
+        
+        response = client.post('/api/games/save', data={'name': 'Test Game', 'save_and_quit': 'false'})
+        
+        assert response.status_code == 200
+        assert b'Game saved' in response.data
+        
+        # Verify file was created
+        assert (tmp_path / 'Test_Game.pgn').exists()
+    
+    def test_save_and_quit_redirects_to_menu(self, client, tmp_path, monkeypatch):
+        """Test that save & quit redirects to menu."""
+        monkeypatch.setattr(
+            'pychess.persistence.save_manager.get_default_save_dir',
+            lambda: tmp_path
+        )
+        
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.post('/api/games/save', data={'name': 'Test Game', 'save_and_quit': 'true'})
+        
+        assert response.status_code == 302
+        assert response.location == '/'
+        
+        # Session should be cleared
+        with client.session_transaction() as sess:
+            assert 'game_session_id' not in sess
+
+
+class TestLoadGameRoute:
+    """Tests for load game functionality."""
+    
+    def test_load_nonexistent_game_redirects(self, client):
+        """Test that loading nonexistent game redirects to games list."""
+        response = client.post('/api/games/nonexistent/load')
+        
+        assert response.status_code == 302
+        assert '/games' in response.location
+    
+    def test_load_game_success(self, client, tmp_path, monkeypatch):
+        """Test successful game load."""
+        monkeypatch.setattr(
+            'pychess.persistence.save_manager.get_default_save_dir',
+            lambda: tmp_path
+        )
+        
+        # Create a saved game first
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        client.post('/api/select', data={'square': 'e2'})
+        client.post('/api/select', data={'square': 'e4'})
+        client.post('/api/games/save', data={'name': 'Load Test', 'save_and_quit': 'true'})
+        
+        # Now load it
+        response = client.post('/api/games/Load_Test/load')
+        
+        assert response.status_code == 302
+        assert '/game' in response.location
+        
+        # Verify game was loaded
+        response = client.get('/game')
+        assert b'e4' in response.data  # Move should be in history
+
+
+class TestDeleteGameRoute:
+    """Tests for delete game functionality."""
+    
+    def test_delete_nonexistent_game_no_error(self, client):
+        """Test that deleting nonexistent game doesn't error."""
+        response = client.post('/api/games/nonexistent/delete')
+        
+        # Should redirect to games list without error
+        assert response.status_code == 302
+        assert '/games' in response.location
+    
+    def test_delete_game_success(self, client, tmp_path, monkeypatch):
+        """Test successful game deletion."""
+        monkeypatch.setattr(
+            'pychess.persistence.save_manager.get_default_save_dir',
+            lambda: tmp_path
+        )
+        
+        # Create a saved game first
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        client.post('/api/games/save', data={'name': 'Delete Test', 'save_and_quit': 'false'})
+        
+        # Verify file exists
+        assert (tmp_path / 'Delete_Test.pgn').exists()
+        
+        # Delete it
+        response = client.post('/api/games/Delete_Test/delete')
+        
+        assert response.status_code == 302
+        assert '/games' in response.location
+        
+        # Verify file is gone
+        assert not (tmp_path / 'Delete_Test.pgn').exists()
+
+
+class TestQuitRoutePost:
+    """Tests for quit route (now POST)."""
+    
+    def test_quit_post_redirects_to_index(self, client):
+        """Test that POST quit redirects to /."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.post('/api/quit')
+        
+        assert response.status_code == 302
+        assert response.location == '/'
+    
+    def test_quit_get_not_allowed(self, client):
+        """Test that GET quit is not allowed."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/api/quit')
+        
+        # Should return 405 Method Not Allowed
+        assert response.status_code == 405

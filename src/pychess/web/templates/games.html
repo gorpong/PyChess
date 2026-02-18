@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}PyChess - Saved Games{% endblock %}
+
+{% block content %}
+<div class="welcome-container">
+    <h1>♔ PyChess ♚</h1>
+    <p class="tagline">Saved Games</p>
+    
+    <div class="games-container">
+        {% if saved_games %}
+            <div class="games-list">
+                {% for game in saved_games %}
+                    <div class="saved-game-card">
+                        <div class="game-info">
+                            <h3 class="game-name">{{ game.name }}</h3>
+                            <div class="game-details">
+                                <span class="game-players">{{ game.white }} vs {{ game.black }}</span>
+                                <span class="game-date">{{ game.date }}</span>
+                            </div>
+                            <div class="game-stats">
+                                <span class="move-count">{{ game.move_count }} moves</span>
+                                <span class="game-result {% if game.is_complete %}complete{% else %}in-progress{% endif %}">
+                                    {% if game.is_complete %}
+                                        {{ game.result }}
+                                    {% else %}
+                                        In Progress
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="game-actions">
+                            <form action="/api/games/{{ game.name }}/load" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-load">
+                                    {% if game.is_complete %}View{% else %}Continue{% endif %}
+                                </button>
+                            </form>
+                            <form action="/api/games/{{ game.name }}/delete" method="POST" style="display: inline;"
+                                  onsubmit="return confirm('Delete this saved game?');">
+                                <button type="submit" class="btn btn-delete">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-games">
+                <p>No saved games found.</p>
+                <p class="no-games-hint">Start a new game and save it to see it here.</p>
+            </div>
+        {% endif %}
+        
+        <div class="games-nav">
+            <a href="/" class="btn btn-back">← Back to Menu</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

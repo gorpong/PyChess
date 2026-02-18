@@ -1,0 +1,39 @@
+<div class="save-dialog-overlay">
+    <div class="save-dialog-modal">
+        <h2>{% if save_and_quit %}Save & Quit{% else %}Save Game{% endif %}</h2>
+        
+        <form hx-post="/api/games/save" 
+              hx-target="#game-container" 
+              hx-swap="innerHTML">
+            <input type="hidden" name="save_and_quit" value="{{ 'true' if save_and_quit else 'false' }}">
+            
+            <div class="form-group">
+                <label for="save-name">Game Name:</label>
+                <input type="text" 
+                       id="save-name" 
+                       name="name" 
+                       value="{{ default_save_name }}"
+                       placeholder="Enter a name for your game"
+                       maxlength="50"
+                       autofocus>
+            </div>
+            
+            {% if save_error %}
+                <p class="save-error">{{ save_error }}</p>
+            {% endif %}
+            
+            <div class="dialog-buttons">
+                <button type="submit" class="btn btn-save-confirm">
+                    {% if save_and_quit %}Save & Quit{% else %}Save{% endif %}
+                </button>
+                <button type="button" 
+                        class="btn btn-cancel"
+                        hx-post="/api/cancel-save"
+                        hx-target="#game-container"
+                        hx-swap="innerHTML">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
