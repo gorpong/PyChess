@@ -136,7 +136,28 @@ def list_games():
     # Reverse to show newest first
     saved_games = list(reversed(saved_games))
     
-    return render_template('games.html', saved_games=saved_games)
+    # Enrich with game mode from headers
+    enriched_games = []
+    for game in saved_games:
+        try:
+            _, headers = manager._save_manager.load_game(game.name)
+            game_mode = headers.game_mode if headers.game_mode else "Unknown"
+        except Exception:
+            game_mode = "Unknown"
+        
+        # Create a dict with all game info plus game_mode
+        enriched_games.append({
+            'name': game.name,
+            'white': game.white,
+            'black': game.black,
+            'result': game.result,
+            'date': game.date,
+            'move_count': game.move_count,
+            'is_complete': game.is_complete,
+            'game_mode': game_mode,
+        })
+    
+    return render_template('games.html', saved_games=enriched_games)
 
 
 @bp.route('/api/new-game', methods=['POST'])

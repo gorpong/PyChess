@@ -85,6 +85,23 @@ def validate_and_exit_on_bad_name(name: str) -> str:
         sys.exit(1)
 
 
+def get_game_mode_from_info(game: SavedGameInfo, manager: SaveManager) -> str:
+    """Get the game mode from a saved game.
+    
+    Args:
+        game: SavedGameInfo object
+        manager: SaveManager instance to load full headers
+        
+    Returns:
+        Game mode string (e.g., "Multiplayer", "Easy", "Medium", "Hard")
+    """
+    try:
+        _, headers = manager.load_game(game.name)
+        return headers.game_mode if headers.game_mode else "Unknown"
+    except Exception:
+        return "Unknown"
+
+
 def handle_list_games(manager: SaveManager) -> None:
     """Handle the --list-games command.
     
@@ -101,23 +118,25 @@ def handle_list_games(manager: SaveManager) -> None:
         return
     
     print(f"Saved Games ({len(games)}/10):")
-    print("-" * 82)
-    print(f"{'Name':<20} {'White':<12} {'Black':<12} {'Result':<10} {'Moves':<6} {'Time'}")
-    print("-" * 82)
+    print("-" * 94)
+    print(f"{'Name':<20} {'White':<12} {'Black':<12} {'Mode':<12} {'Result':<10} {'Moves':<6} {'Time'}")
+    print("-" * 94)
     
     for game in games:
         status = game.result if game.is_complete else "(ongoing)"
         time_str = format_elapsed_time(game.total_time_seconds)
+        game_mode = get_game_mode_from_info(game, manager)
         print(
             f"{game.name:<20} "
             f"{game.white:<12} "
             f"{game.black:<12} "
+            f"{game_mode:<12} "
             f"{status:<10} "
             f"{game.move_count:<6} "
             f"{time_str}"
         )
     
-    print("-" * 82)
+    print("-" * 94)
     print("\nTo load a game: pychess --load \"<name>\"")
 
 
@@ -157,7 +176,7 @@ def handle_show_game(manager: SaveManager, name: str) -> None:
     print()
     print(f"  White: {headers.white:<20} Black: {headers.black}")
     print(f"  Date:  {headers.date:<20} Result: {headers.result}")
-    print(f"  Time:  {format_elapsed_time(headers.total_time_seconds)}")
+    print(f"  Mode:  {headers.game_mode:<20} Time: {format_elapsed_time(headers.total_time_seconds)}")
     print()
     print("-" * 60)
     print("  Moves:")

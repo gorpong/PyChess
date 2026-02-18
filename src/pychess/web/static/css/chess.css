@@ -976,3 +976,14 @@ main {
 .btn-save-quit:hover {
     background: #AB47BC;
 }
+/* Game Mode Badge */
+.game-mode-badge {
+    display: inline-block;
+    background: #4a4a4a;
+    color: #f0d9b5;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}

@@ -19,6 +19,7 @@
                                 <span class="game-date">{{ game.date }}</span>
                             </div>
                             <div class="game-stats">
+                                <span class="game-mode-badge">{{ game.game_mode }}</span>
                                 <span class="move-count">{{ game.move_count }} moves</span>
                                 <span class="game-result {% if game.is_complete %}complete{% else %}in-progress{% endif %}">
                                     {% if game.is_complete %}

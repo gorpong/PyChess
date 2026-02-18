@@ -574,8 +574,8 @@ class GameManager:
             black_name = "Black"
             game_mode_header = "Multiplayer"
         else:
-            white_name = "Human"
-            black_name = f"Computer ({session.game_mode.title()})"
+            white_name = "Player"
+            black_name = "Computer"
             game_mode_header = session.game_mode.title()
 
         # Create headers
