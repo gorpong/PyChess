@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}PyChess - Game{% endblock %}
+
+{% block content %}
+<div class="game-container">
+    <div class="game-header">
+        <h1>♔ PyChess ♚</h1>
+    </div>
+    
+    <div id="game-container">
+        {% include "partials/game_area.html" %}
+    </div>
+</div>
+{% endblock %}

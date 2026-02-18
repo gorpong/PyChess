@@ -11,6 +11,7 @@
 | 2026-02-17 | 5 | Complete | Piece selection and hints (on request) |
 | 2026-02-17 | 6 | Complete | Move execution, promotion, undo, game end |
 | 2026-02-17 | 7 | Complete | AI integration polish and tests |
+| 2026-02-17 | 8 | Complete | Game mode menu and navigation |
 
 ---
 

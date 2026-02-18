@@ -42,6 +42,13 @@
                         {% endif %}
                     </p>
                     <p class="result-code">{{ game_result }}</p>
+                    <div class="game-over-buttons">
+                        <button class="btn btn-restart"
+                                onclick="if(confirm('Start a new game with the same settings?')) { document.getElementById('restart-form').submit(); }">
+                            Play Again
+                        </button>
+                        <a href="/" class="btn btn-quit">Back to Menu</a>
+                    </div>
                 </div>
             </div>
         {% endif %}
@@ -88,13 +95,25 @@
                     hx-swap="innerHTML">
                 Undo
             </button>
+            
+            <button class="btn btn-restart"
+                    onclick="if(confirm('Restart the game? All progress will be lost.')) { document.getElementById('restart-form').submit(); }">
+                Restart
+            </button>
+            
+            <button class="btn btn-quit"
+                    onclick="if(confirm('Quit the game? All progress will be lost.')) { window.location.href = '/api/quit'; }">
+                Quit
+            </button>
         </div>
         
         {% include "partials/history.html" %}
         
         <div class="mode-panel">
             <p class="current-mode">Mode: {{ game_mode | title }}</p>
-            <p class="mode-hint">Game mode selection coming in Phase 8.</p>
         </div>
     </div>
 </div>
+
+<!-- Hidden form for restart -->
+<form id="restart-form" action="/api/restart" method="POST" style="display: none;"></form>

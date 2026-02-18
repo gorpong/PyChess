@@ -39,50 +39,104 @@ class TestIndexRoute:
         response = client.get('/')
         assert b'PyChess' in response.data
     
-    def test_index_contains_board(self, client):
-        """Test that index page contains the board."""
+    def test_index_shows_mode_selection(self, client):
+        """Test that index shows game mode selection."""
         response = client.get('/')
-        assert b'id="board"' in response.data
+        assert b'Select Game Mode' in response.data
     
-    def test_index_contains_64_squares(self, client):
-        """Test that board has 64 squares."""
+    def test_index_shows_multiplayer_option(self, client):
+        """Test that multiplayer mode option is shown."""
         response = client.get('/')
-        assert response.data.count(b'class="square') == 64
+        assert b'Multiplayer' in response.data
     
-    def test_index_shows_white_to_move(self, client):
-        """Test that initial position shows white to move."""
+    def test_index_shows_ai_options(self, client):
+        """Test that AI difficulty options are shown."""
         response = client.get('/')
-        assert b'White to move' in response.data
+        assert b'Easy' in response.data
+        assert b'Medium' in response.data
+        assert b'Hard' in response.data
     
-    def test_index_creates_session(self, client):
-        """Test that visiting index creates a game session."""
-        with client.session_transaction() as sess:
-            assert 'game_session_id' not in sess
-        
+    def test_index_does_not_create_session(self, client):
+        """Test that visiting index does not create a game session."""
         client.get('/')
         
         with client.session_transaction() as sess:
-            assert 'game_session_id' in sess
+            assert 'game_session_id' not in sess
     
-    def test_index_shows_move_history_panel(self, client):
-        """Test that move history panel is shown."""
+    def test_index_redirects_to_game_if_session_exists(self, client):
+        """Test that index redirects to /game if active session exists."""
+        # Create a game first
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        
+        # Now visiting index should redirect to game
         response = client.get('/')
+        assert response.status_code == 302
+        assert '/game' in response.location
+
+
+class TestGameRoute:
+    """Tests for game route."""
+    
+    def test_game_redirects_to_index_without_session(self, client):
+        """Test that /game redirects to / without active session."""
+        response = client.get('/game')
+        assert response.status_code == 302
+        assert response.location == '/'
+    
+    def test_game_returns_200_with_session(self, client):
+        """Test that /game returns successfully with active session."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/game')
+        assert response.status_code == 200
+    
+    def test_game_contains_board(self, client):
+        """Test that game page contains the board."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/game')
+        assert b'id="board"' in response.data
+    
+    def test_game_contains_64_squares(self, client):
+        """Test that board has 64 squares."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/game')
+        assert response.data.count(b'class="square') == 64
+    
+    def test_game_shows_white_to_move(self, client):
+        """Test that initial position shows white to move."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/game')
+        assert b'White to move' in response.data
+    
+    def test_game_shows_move_history_panel(self, client):
+        """Test that move history panel is shown."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/game')
         assert b'Move History' in response.data
     
-    def test_index_shows_undo_button(self, client):
-        """Test that undo button is shown."""
-        response = client.get('/')
+    def test_game_shows_control_buttons(self, client):
+        """Test that control buttons are shown."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/game')
         assert b'Undo' in response.data
+        assert b'Restart' in response.data
+        assert b'Quit' in response.data
 
 
 class TestNewGameRoute:
     """Tests for new game creation route."""
     
-    def test_new_game_redirects_to_index(self, client):
-        """Test that new game redirects to index."""
+    def test_new_game_redirects_to_game(self, client):
+        """Test that new game redirects to /game."""
         response = client.post('/api/new-game', data={'mode': 'multiplayer'})
         assert response.status_code == 302
-        assert response.location == '/'
+        assert '/game' in response.location
+    
+    def test_new_game_creates_session(self, client):
+        """Test that new game creates a session."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        
+        with client.session_transaction() as sess:
+            assert 'game_session_id' in sess
     
     def test_new_game_creates_multiplayer(self, client):
         """Test creating a multiplayer game."""
@@ -107,6 +161,115 @@ class TestNewGameRoute:
             
             game = manager.get_game(session_id)
             assert game.game_mode == mode
+    
+    def test_new_game_replaces_existing_session(self, client):
+        """Test that creating new game replaces existing session."""
+        # Create first game
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        with client.session_transaction() as sess:
+            first_session_id = sess.get('game_session_id')
+        
+        # Create second game
+        client.post('/api/new-game', data={'mode': 'easy'})
+        with client.session_transaction() as sess:
+            second_session_id = sess.get('game_session_id')
+        
+        # Should have different session IDs
+        assert first_session_id != second_session_id
+        
+        # First session should be deleted
+        manager = get_game_manager()
+        assert manager.get_game(first_session_id) is None
+
+
+class TestRestartRoute:
+    """Tests for game restart route."""
+    
+    def test_restart_redirects_to_game(self, client):
+        """Test that restart redirects to /game."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.post('/api/restart')
+        assert response.status_code == 302
+        assert '/game' in response.location
+    
+    def test_restart_preserves_mode(self, client):
+        """Test that restart preserves the game mode."""
+        client.post('/api/new-game', data={'mode': 'medium'})
+        client.post('/api/restart')
+        
+        manager = get_game_manager()
+        with client.session_transaction() as sess:
+            session_id = sess.get('game_session_id')
+        
+        game = manager.get_game(session_id)
+        assert game.game_mode == 'medium'
+    
+    def test_restart_resets_board(self, client):
+        """Test that restart resets the board to initial position."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        
+        # Make a move
+        client.post('/api/select', data={'square': 'e2'})
+        client.post('/api/select', data={'square': 'e4'})
+        
+        # Restart
+        client.post('/api/restart')
+        
+        # Check board is reset
+        manager = get_game_manager()
+        with client.session_transaction() as sess:
+            session_id = sess.get('game_session_id')
+        
+        game = manager.get_game(session_id)
+        # e2 should have a pawn again
+        from pychess.model.square import Square
+        from pychess.model.piece import Piece, Color
+        piece = game.game_state.board.get(Square(file='e', rank=2))
+        assert piece == (Piece.PAWN, Color.WHITE)
+    
+    def test_restart_without_session_redirects_to_index(self, client):
+        """Test that restart without session redirects to index."""
+        response = client.post('/api/restart')
+        assert response.status_code == 302
+        assert response.location == '/'
+
+
+class TestQuitRoute:
+    """Tests for game quit route."""
+    
+    def test_quit_redirects_to_index(self, client):
+        """Test that quit redirects to /."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        response = client.get('/api/quit')
+        assert response.status_code == 302
+        assert response.location == '/'
+    
+    def test_quit_deletes_session(self, client):
+        """Test that quit deletes the game session."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        
+        with client.session_transaction() as sess:
+            session_id = sess.get('game_session_id')
+        
+        client.get('/api/quit')
+        
+        # Session should be deleted
+        manager = get_game_manager()
+        assert manager.get_game(session_id) is None
+    
+    def test_quit_clears_session_cookie(self, client):
+        """Test that quit clears the session ID from cookie."""
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
+        client.get('/api/quit')
+        
+        with client.session_transaction() as sess:
+            assert 'game_session_id' not in sess
+    
+    def test_quit_without_session_no_error(self, client):
+        """Test that quit without session doesn't error."""
+        response = client.get('/api/quit')
+        assert response.status_code == 302
+        assert response.location == '/'
 
 
 class TestSelectSquareRoute:
@@ -114,7 +277,7 @@ class TestSelectSquareRoute:
     
     def test_select_own_piece(self, client):
         """Test selecting own piece highlights it."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         response = client.post('/api/select', data={'square': 'e2'})
         
         assert response.status_code == 200
@@ -122,11 +285,17 @@ class TestSelectSquareRoute:
     
     def test_select_opponent_piece_rejected(self, client):
         """Test that selecting opponent's piece shows error."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         response = client.post('/api/select', data={'square': 'e7'})
         
         assert response.status_code == 200
         assert b"not your piece" in response.data.lower()
+    
+    def test_select_without_session_redirects(self, client):
+        """Test that select without session redirects to index."""
+        response = client.post('/api/select', data={'square': 'e2'})
+        assert response.status_code == 302
+        assert response.location == '/'
 
 
 class TestMoveExecution:
@@ -134,7 +303,7 @@ class TestMoveExecution:
     
     def test_simple_pawn_move(self, client):
         """Test executing a simple pawn move."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         client.post('/api/select', data={'square': 'e2'})
         response = client.post('/api/select', data={'square': 'e4'})
         
@@ -143,7 +312,7 @@ class TestMoveExecution:
     
     def test_move_updates_turn(self, client):
         """Test that move updates turn indicator."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         client.post('/api/select', data={'square': 'e2'})
         response = client.post('/api/select', data={'square': 'e4'})
         
@@ -151,7 +320,7 @@ class TestMoveExecution:
     
     def test_move_shows_last_move_highlight(self, client):
         """Test that last move squares are highlighted."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         client.post('/api/select', data={'square': 'e2'})
         response = client.post('/api/select', data={'square': 'e4'})
         
@@ -159,17 +328,16 @@ class TestMoveExecution:
     
     def test_move_appears_in_history(self, client):
         """Test that move appears in move history."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         client.post('/api/select', data={'square': 'e2'})
         response = client.post('/api/select', data={'square': 'e4'})
         
         # Move history should show "1." and "e4"
         assert b'1.' in response.data
-    
 
     def test_capture_move(self, client):
         """Test executing a capture move."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         # 1. e4 e5 2. Qh5 Nc6 3. Qxf7+ (capture with check)
         moves = [
             ('e2', 'e4'), ('e7', 'e5'),
@@ -195,10 +363,7 @@ class TestPromotionRoute:
     
     def test_promotion_shows_dialog(self, client):
         """Test that promotion shows piece selection dialog."""
-        # Set up a position with pawn ready to promote
-        # This is tricky without direct state manipulation
-        # For now, test the promotion endpoint directly
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         
         manager = get_game_manager()
         with client.session_transaction() as sess:
@@ -214,12 +379,12 @@ class TestPromotionRoute:
         )
         manager.update_game(game)
         
-        response = client.get('/')
+        response = client.get('/game')
         assert b'promotion' in response.data.lower()
     
     def test_promote_to_queen(self, client):
         """Test promoting to queen."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         
         manager = get_game_manager()
         with client.session_transaction() as sess:
@@ -244,7 +409,7 @@ class TestUndoRoute:
     
     def test_undo_move(self, client):
         """Test undoing a move."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         client.post('/api/select', data={'square': 'e2'})
         client.post('/api/select', data={'square': 'e4'})
         
@@ -256,7 +421,7 @@ class TestUndoRoute:
     
     def test_undo_no_moves(self, client):
         """Test undo with no moves to undo."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         response = client.post('/api/undo')
         
         assert b'No moves to undo' in response.data
@@ -279,14 +444,14 @@ class TestToggleHintsRoute:
     
     def test_toggle_hints_requires_selection(self, client):
         """Test that toggling hints without selection shows message."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         response = client.post('/api/toggle-hints')
         
         assert b'Select a piece first' in response.data
     
     def test_toggle_hints_shows_legal_moves(self, client):
         """Test that toggling hints shows legal moves."""
-        client.get('/')
+        client.post('/api/new-game', data={'mode': 'multiplayer'})
         client.post('/api/select', data={'square': 'e2'})
         response = client.post('/api/toggle-hints')
         

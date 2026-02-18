@@ -7,8 +7,46 @@
     <h1>♔ PyChess ♚</h1>
     <p class="tagline">Terminal Chess in Your Browser</p>
     
-    <div id="game-container">
-        {% include "partials/game_area.html" %}
+    <div class="menu-container">
+        <h2>Select Game Mode</h2>
+        
+        <div class="mode-buttons">
+            <form action="/api/new-game" method="POST">
+                <input type="hidden" name="mode" value="multiplayer">
+                <button type="submit" class="btn btn-mode btn-multiplayer">
+                    <span class="mode-icon">👥</span>
+                    <span class="mode-name">Multiplayer</span>
+                    <span class="mode-desc">Two players, same device</span>
+                </button>
+            </form>
+            
+            <form action="/api/new-game" method="POST">
+                <input type="hidden" name="mode" value="easy">
+                <button type="submit" class="btn btn-mode btn-easy">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-name">vs AI - Easy</span>
+                    <span class="mode-desc">Random moves</span>
+                </button>
+            </form>
+            
+            <form action="/api/new-game" method="POST">
+                <input type="hidden" name="mode" value="medium">
+                <button type="submit" class="btn btn-mode btn-medium">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-name">vs AI - Medium</span>
+                    <span class="mode-desc">Material-based strategy</span>
+                </button>
+            </form>
+            
+            <form action="/api/new-game" method="POST">
+                <input type="hidden" name="mode" value="hard">
+                <button type="submit" class="btn btn-mode btn-hard">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-name">vs AI - Hard</span>
+                    <span class="mode-desc">Positional play</span>
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

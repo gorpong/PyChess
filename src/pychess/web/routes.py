@@ -15,27 +15,6 @@ from pychess.web.game_manager import get_game_manager, WebGameSession
 bp = Blueprint('main', __name__)
 
 
-def get_or_create_session() -> WebGameSession:
-    """Get existing game session or create a new one.
-    
-    Returns:
-        The current WebGameSession for this browser session.
-    """
-    manager = get_game_manager()
-    
-    # Check for existing session
-    session_id = session.get('game_session_id')
-    if session_id:
-        game = manager.get_game(session_id)
-        if game:
-            return game
-    
-    # Create new session
-    session_id = manager.create_session_id()
-    session['game_session_id'] = session_id
-    return manager.create_game(session_id, 'multiplayer')
-
-
 def get_current_session() -> WebGameSession | None:
     """Get existing game session without creating a new one.
     
@@ -49,11 +28,11 @@ def get_current_session() -> WebGameSession | None:
     return None
 
 
-def render_game_state(game_session: WebGameSession, template: str = 'index.html'):
+def render_game_state(game_session: WebGameSession, template: str = 'game.html'):
     """Render the current game state.
     
     For HTMX requests, returns just the game_area partial.
-    For full page requests, returns the complete index template.
+    For full page requests, returns the complete game template.
     
     Args:
         game_session: The game session to render.
@@ -116,10 +95,33 @@ def build_game_context(game_session: WebGameSession) -> dict:
         'game_result': game_session.game_result,
     }
 
+
 @bp.route('/')
 def index():
-    """Render the game mode selection page with current board."""
-    game_session = get_or_create_session()
+    """Render the game mode selection page.
+    
+    If an active game session exists, redirects to /game.
+    """
+    game_session = get_current_session()
+    if game_session:
+        # Active game exists, redirect to game page
+        return redirect(url_for('main.game'))
+    
+    # No active game, show menu
+    return render_template('index.html')
+
+
+@bp.route('/game')
+def game():
+    """Render the active game page.
+    
+    If no active game session exists, redirects to /.
+    """
+    game_session = get_current_session()
+    if not game_session:
+        # No active game, redirect to menu
+        return redirect(url_for('main.index'))
+    
     return render_game_state(game_session)
 
 
@@ -141,6 +143,45 @@ def new_game():
     session_id = manager.create_session_id()
     session['game_session_id'] = session_id
     manager.create_game(session_id, mode)
+    
+    return redirect(url_for('main.game'))
+
+
+@bp.route('/api/restart', methods=['POST'])
+def restart():
+    """Restart the current game with the same mode."""
+    manager = get_game_manager()
+    game_session = get_current_session()
+    
+    if not game_session:
+        return redirect(url_for('main.index'))
+    
+    # Remember the current mode
+    current_mode = game_session.game_mode
+    
+    # Delete existing session
+    old_session_id = session.get('game_session_id')
+    if old_session_id:
+        manager.delete_game(old_session_id)
+    
+    # Create new session with same mode
+    session_id = manager.create_session_id()
+    session['game_session_id'] = session_id
+    manager.create_game(session_id, current_mode)
+    
+    return redirect(url_for('main.game'))
+
+
+@bp.route('/api/quit')
+def quit_game():
+    """Quit the current game and return to menu."""
+    manager = get_game_manager()
+    
+    # Delete existing session if any
+    session_id = session.get('game_session_id')
+    if session_id:
+        manager.delete_game(session_id)
+        session.pop('game_session_id', None)
     
     return redirect(url_for('main.index'))
 

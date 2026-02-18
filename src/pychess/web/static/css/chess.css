@@ -492,3 +492,178 @@ main {
         height: 480px;
     }
 }
+/* ============================================
+   Phase 8: Menu and Navigation Styles
+   ============================================ */
+
+/* Menu Container */
+.menu-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #2a2a2a;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.menu-container h2 {
+    text-align: center;
+    color: #f0d9b5;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+/* Mode Selection Buttons */
+.mode-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.mode-buttons form {
+    margin: 0;
+}
+
+.btn-mode {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border: 2px solid #4a4a4a;
+    border-radius: 8px;
+    background: #3a3a3a;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-mode:hover {
+    background: #4a4a4a;
+    border-color: #f0d9b5;
+    transform: translateY(-2px);
+}
+
+.btn-mode:active {
+    transform: translateY(0);
+}
+
+.mode-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.mode-name {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.mode-desc {
+    font-size: 0.875rem;
+    color: #aaa;
+}
+
+/* Mode-specific button colors */
+.btn-multiplayer:hover {
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.btn-easy:hover {
+    border-color: #8BC34A;
+    box-shadow: 0 0 10px rgba(139, 195, 74, 0.3);
+}
+
+.btn-medium:hover {
+    border-color: #FFC107;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+.btn-hard:hover {
+    border-color: #FF5722;
+    box-shadow: 0 0 10px rgba(255, 87, 34, 0.3);
+}
+
+/* Game Header */
+.game-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.game-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.game-header h1 {
+    font-size: 1.5rem;
+    color: #f0d9b5;
+    margin: 0;
+}
+
+/* Control Panel Buttons */
+.controls-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.btn-restart {
+    background: #ff9800;
+    color: #000;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.btn-restart:hover {
+    background: #ffb74d;
+}
+
+.btn-quit {
+    background: #f44336;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+    text-align: center;
+    transition: background 0.2s;
+}
+
+.btn-quit:hover {
+    background: #e57373;
+}
+
+/* Game Over Buttons */
+.game-over-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.game-over-buttons .btn-restart,
+.game-over-buttons .btn-quit {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Mode Panel Update */
+.mode-panel {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #4a4a4a;
+}
+
+.mode-panel .mode-hint {
+    display: none; /* Hide the "coming in Phase 8" text */
+}
