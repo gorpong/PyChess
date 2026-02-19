@@ -1017,3 +1017,269 @@ main {
     color: #aaa;
     font-weight: normal;
 }
+
+/* ============================================
+   AI Thinking Overlay
+   ============================================ */
+
+.ai-thinking-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 90;
+}
+
+.ai-thinking-content {
+    text-align: center;
+    color: #fff;
+}
+
+.ai-thinking-content p {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    color: #f0d9b5;
+}
+
+/* Spinner */
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #4a4a4a;
+    border-top-color: #f0d9b5;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================
+   Keyboard Shortcuts Hint
+   ============================================ */
+
+.keyboard-shortcuts {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border-top: 1px solid #4a4a4a;
+}
+
+.shortcuts-hint {
+    font-size: 0.75rem;
+    color: #888;
+    margin: 0;
+}
+
+.shortcuts-hint kbd {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: #f0d9b5;
+    background: #3a3a3a;
+    border: 1px solid #5a5a5a;
+    border-radius: 3px;
+    box-shadow: 0 1px 0 #2a2a2a;
+}
+
+/* ============================================
+   Responsive Styles - Tablet (768px - 1023px)
+   ============================================ */
+
+@media screen and (max-width: 1023px) {
+    .welcome-container {
+        padding: 1rem;
+    }
+    
+    .welcome-container h1 {
+        font-size: 2rem;
+    }
+    
+    .menu-container {
+        max-width: 100%;
+        padding: 1.5rem;
+    }
+    
+    .game-container {
+        padding: 0.5rem;
+    }
+    
+    .game-header h1 {
+        font-size: 1.25rem;
+    }
+    
+    .game-area {
+        gap: 1rem;
+    }
+    
+    /* Smaller board for tablet */
+    #board {
+        width: 360px;
+        height: 360px;
+    }
+    
+    .square {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .square img {
+        width: 38px;
+        height: 38px;
+    }
+    
+    .rank-labels span,
+    .file-labels span {
+        font-size: 0.75rem;
+    }
+    
+    .info-section {
+        min-width: 200px;
+    }
+    
+    .controls-panel {
+        gap: 0.35rem;
+    }
+    
+    .controls-panel .btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    .status-panel {
+        padding: 0.5rem;
+    }
+    
+    .turn-indicator {
+        font-size: 1rem;
+    }
+    
+    .move-history {
+        max-height: 150px;
+    }
+}
+
+/* ============================================
+   Responsive Styles - Small Tablet (768px)
+   ============================================ */
+
+@media screen and (max-width: 850px) {
+    .game-area {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .board-section {
+        order: 1;
+    }
+    
+    .info-section {
+        order: 2;
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    #board {
+        width: 320px;
+        height: 320px;
+    }
+    
+    .square {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .square img {
+        width: 34px;
+        height: 34px;
+    }
+    
+    .controls-panel {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .controls-panel .btn {
+        flex: 0 1 auto;
+    }
+    
+    .hint-tip {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ============================================
+   Games List Responsive
+   ============================================ */
+
+@media screen and (max-width: 600px) {
+    .saved-game-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .game-actions {
+        width: 100%;
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .game-actions .btn {
+        flex: 1;
+    }
+}
+
+/* ============================================
+   Dialog Responsive
+   ============================================ */
+
+@media screen and (max-width: 450px) {
+    .save-dialog-modal,
+    .game-over-modal {
+        min-width: auto;
+        width: 90%;
+        padding: 1.5rem;
+    }
+    
+    .dialog-buttons,
+    .game-over-buttons {
+        flex-direction: column;
+    }
+    
+    .dialog-buttons .btn,
+    .game-over-buttons .btn {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   Promotion Dialog Responsive
+   ============================================ */
+
+@media screen and (max-width: 450px) {
+    .promotion-pieces {
+        gap: 0.5rem;
+    }
+    
+    .promotion-piece {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .promotion-piece img {
+        width: 40px;
+        height: 40px;
+    }
+}

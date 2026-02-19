@@ -32,6 +32,15 @@
             {% include "partials/save_dialog.html" %}
         {% endif %}
         
+        {% if ai_thinking %}
+            <div class="ai-thinking-overlay">
+                <div class="ai-thinking-content">
+                    <div class="spinner"></div>
+                    <p>AI is thinking...</p>
+                </div>
+            </div>
+        {% endif %}
+        
         {# Only show modal overlay if game ended during this session #}
         {% if game_result and game_ended_during_session and not show_save_dialog %}
             <div class="game-over-overlay">
@@ -122,7 +131,8 @@
                 <button class="btn btn-undo"
                         hx-post="/api/undo"
                         hx-target="#game-container"
-                        hx-swap="innerHTML">
+                        hx-swap="innerHTML"
+                        title="Keyboard: U">
                     Undo
                 </button>
                 
@@ -180,6 +190,10 @@
                     </button>
                 {% endif %}
             {% endif %}
+        </div>
+        
+        <div class="keyboard-shortcuts">
+            <p class="shortcuts-hint">Keyboard: <kbd>U</kbd> Undo, <kbd>Esc</kbd> Cancel</p>
         </div>
         
         {% include "partials/history.html" %}

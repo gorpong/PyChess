@@ -99,6 +99,7 @@ def build_game_context(game_session: WebGameSession) -> dict:
         'save_and_quit': False,
         'default_save_name': default_save_name,
         'save_error': None,
+        'ai_thinking': False,  # AI moves are synchronous, so this is always False in response
     }
 
 
