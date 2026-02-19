@@ -1,7 +1,7 @@
 """HTTP route handlers for PyChess web UI."""
 
 from datetime import date
-from flask import Blueprint, render_template, session, redirect, url_for, request
+from flask import Blueprint, render_template, session, redirect, url_for, request, make_response
 
 from pychess.model.piece import Color
 from pychess.model.square import Square
@@ -325,6 +325,23 @@ def cancel_save():
     return render_game_state(game_session)
 
 
+@bp.route('/api/clear-selection', methods=['POST'])
+def clear_selection():
+    """Clear the current piece selection."""
+    manager = get_game_manager()
+    game_session = get_current_session()
+
+    if not game_session:
+        return redirect(url_for('main.index'))
+
+    game_session.selected_square = None
+    game_session.show_hints = False
+    game_session.status_messages = ['Selection cleared']
+    manager.update_game(game_session)
+
+    return render_game_state(game_session)
+
+
 @bp.route('/api/games/save', methods=['POST'])
 def save_game():
     """Save the current game."""
@@ -358,6 +375,12 @@ def save_game():
             if session_id:
                 manager.delete_game(session_id)
                 session.pop('game_session_id', None)
+            
+            # For HTMX requests, use HX-Redirect header for full page navigation
+            if request.headers.get('HX-Request') == 'true':
+                response = make_response()
+                response.headers['HX-Redirect'] = url_for('main.index')
+                return response
             return redirect(url_for('main.index'))
         else:
             # Stay in game, show success message

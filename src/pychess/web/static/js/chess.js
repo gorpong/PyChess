@@ -54,27 +54,24 @@
             return;
         }
 
-        // Don't intercept if dialog is open (except Escape)
-        if (isDialogOpen() && event.key !== 'Escape') {
-            return;
-        }
-
-        switch (event.key.toLowerCase()) {
+        switch (event.key) {
             case 'u':
-                // Undo
-                event.preventDefault();
-                htmxPost('/api/undo', '#game-container');
+            case 'U':
+                // Undo - but not if dialog is open
+                if (!isDialogOpen()) {
+                    event.preventDefault();
+                    htmxPost('/api/undo', '#game-container');
+                }
                 break;
 
-            case 'escape':
-                // Clear selection or close dialog
+            case 'Escape':
                 event.preventDefault();
                 if (isDialogOpen()) {
-                    // Try to cancel save dialog
+                    // Cancel save dialog
                     htmxPost('/api/cancel-save', '#game-container');
                 } else {
-                    // Clear selection by clicking empty area - just refresh state
-                    htmxPost('/api/cancel-save', '#game-container');
+                    // Clear piece selection
+                    htmxPost('/api/clear-selection', '#game-container');
                 }
                 break;
         }
