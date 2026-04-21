@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
-from pychess.model.piece import Color
+from pychess.model.piece import Color, Piece
 from pychess.model.square import Square
 from pychess.model.board import Board
 
@@ -129,6 +129,39 @@ class GameState:
         )
         return hash(state_tuple)
 
+    def to_public_data(self) -> dict[str, Any]:
+        """Return a transport-safe representation of the full game state.
+
+        This is the supported way for other packages to persist or transmit a
+        `GameState` without coupling themselves to this module's private tuple
+        fields or the board's internal storage layout.
+        """
+        piece_entries: list[tuple[str, str]] = []
+        for color in (Color.WHITE, Color.BLACK):
+            for square, piece in self.board.get_pieces_by_color(color):
+                piece_entries.append(
+                    (square.to_algebraic(), f"{piece.name}:{color.name}")
+                )
+
+        return {
+            "pieces": dict(sorted(piece_entries)),
+            "turn": self.turn.name,
+            "castling": {
+                "wk": self.castling.white_kingside,
+                "wq": self.castling.white_queenside,
+                "bk": self.castling.black_kingside,
+                "bq": self.castling.black_queenside,
+            },
+            "en_passant": (
+                self.en_passant_square.to_algebraic()
+                if self.en_passant_square else None
+            ),
+            "halfmove_clock": self.halfmove_clock,
+            "fullmove_number": self.fullmove_number,
+            "move_history": self.move_history,
+            "position_history": self.position_history,
+        }
+
     @classmethod
     def initial(cls) -> GameState:
         """Create initial game state."""
@@ -140,6 +173,40 @@ class GameState:
             halfmove_clock=0,
             fullmove_number=1,
             _move_history=(),
+        )
+
+    @classmethod
+    def from_public_data(cls, data: dict[str, Any]) -> GameState:
+        """Rebuild a `GameState` from `to_public_data()` output."""
+        board = Board.empty()
+        for algebraic, spec in data["pieces"].items():
+            piece_name, color_name = spec.split(":")
+            board = board.set(
+                Square.from_algebraic(algebraic),
+                Piece[piece_name],
+                Color[color_name],
+            )
+
+        castling_data = data["castling"]
+        castling = CastlingRights(
+            white_kingside=castling_data["wk"],
+            white_queenside=castling_data["wq"],
+            black_kingside=castling_data["bk"],
+            black_queenside=castling_data["bq"],
+        )
+
+        en_passant = data.get("en_passant")
+        return cls(
+            board=board,
+            turn=Color[data["turn"]],
+            castling=castling,
+            en_passant_square=(
+                Square.from_algebraic(en_passant) if en_passant else None
+            ),
+            halfmove_clock=data["halfmove_clock"],
+            fullmove_number=data["fullmove_number"],
+            _move_history=tuple(data.get("move_history", [])),
+            _position_history=tuple(data.get("position_history", [])),
         )
 
     @property

@@ -7,13 +7,12 @@ handling input events, game state updates, and AI integration.
 import time
 from typing import Optional
 
+from pychess.controller.game_controller import GameController, MoveOutcome
 from pychess.model.game_state import GameState
 from pychess.model.piece import Color
 from pychess.model.square import Square
-from pychess.notation.san import san_to_move, move_to_san
-from pychess.notation.pgn import _apply_san_move
 from pychess.rules.move import Move
-from pychess.rules.validator import get_legal_moves, is_move_legal
+from pychess.rules.validator import get_legal_moves
 from pychess.rules.game_logic import get_game_result
 from pychess.ui.cursor import CursorState
 from pychess.ui.input_handler import InputHandler, InputType, InputEvent
@@ -54,7 +53,8 @@ class GameSession:
         """
         self.renderer = renderer
         self.ai_engine = ai_engine
-        
+        self._controller = GameController()
+
         # Game state
         self.game_state = GameState.initial()
         self.cursor_state = CursorState.initial()
@@ -248,21 +248,12 @@ class GameSession:
             self._handle_tutorial()
             return False
         
-        # Try to parse as SAN move
-        try:
-            move = san_to_move(self.game_state, user_input)
-            
-            # Verify move is legal
-            if not is_move_legal(self.game_state, move):
-                self.renderer.show_error(f"Illegal move: {user_input}")
-                return False
-            
-            # Execute the move
-            self._execute_move(move)
-            
-        except ValueError as e:
-            self.renderer.show_error(str(e))
-        
+        # Try to parse and apply as SAN move
+        outcome = self._controller.apply_san(self.game_state, user_input)
+        if outcome.illegal:
+            self.renderer.show_error(outcome.illegal.reason)
+            return False
+        self._commit_outcome(outcome)
         return False
 
     def get_legal_move_squares(self) -> set[Square]:
@@ -328,53 +319,38 @@ class GameSession:
 
     def _try_cursor_move(self, from_square: Square, to_square: Square) -> None:
         """Try to execute a move from cursor selection.
-        
+
         Args:
             from_square: Source square
             to_square: Destination square
         """
         from pychess.model.piece import Piece
-        
-        # Find all matching legal moves (there may be multiple for promotions)
-        legal_moves = get_legal_moves(self.game_state)
-        matching_moves = [
-            move for move in legal_moves
-            if move.from_square == from_square and move.to_square == to_square
-        ]
-        
-        if not matching_moves:
+
+        outcome = self._controller.apply_from_to(
+            self.game_state, from_square, to_square
+        )
+
+        if outcome.illegal:
             self.renderer.show_error("Illegal move")
             self.cursor_state = self.cursor_state.clear_selection()
             return
-        
-        # Check if this is a promotion (multiple moves with different promotion pieces)
-        if len(matching_moves) > 1:
-            # This is a promotion - all moves should have promotion pieces
-            promotion_moves = [m for m in matching_moves if m.promotion is not None]
-            if len(promotion_moves) == len(matching_moves):
-                # Prompt user for promotion choice
-                chosen_piece = self.renderer.prompt_promotion_choice()
-                
-                # Find the move with the chosen promotion piece
-                matching_move = None
-                for move in promotion_moves:
-                    if move.promotion == chosen_piece:
-                        matching_move = move
-                        break
-                
-                if matching_move is None:
-                    # Fallback to Queen if something went wrong
-                    matching_move = next(
-                        (m for m in promotion_moves if m.promotion == Piece.QUEEN),
-                        promotion_moves[0]
-                    )
-            else:
-                # Unexpected: multiple non-promotion moves (shouldn't happen)
-                matching_move = matching_moves[0]
-        else:
-            matching_move = matching_moves[0]
-        
-        self._execute_move(matching_move)
+
+        if outcome.promotion_required:
+            chosen_piece = self.renderer.prompt_promotion_choice()
+            outcome = self._controller.apply_from_to(
+                self.game_state, from_square, to_square, promotion=chosen_piece
+            )
+            if outcome.illegal:
+                # Defensive fallback: renderer returned a non-candidate piece.
+                outcome = self._controller.apply_from_to(
+                    self.game_state, from_square, to_square, promotion=Piece.QUEEN
+                )
+                if outcome.illegal:
+                    self.renderer.show_error("Illegal move")
+                    self.cursor_state = self.cursor_state.clear_selection()
+                    return
+
+        self._commit_outcome(outcome)
         self.cursor_state = self.cursor_state.clear_selection()
 
     def _try_select_piece(self) -> None:
@@ -395,43 +371,61 @@ class GameSession:
             self.cursor_state = self.cursor_state.clear_selection()
 
     def _execute_move(self, move: Move) -> None:
-        """Execute a validated move and trigger AI if needed.
-        
+        """Execute a move via the shared controller and trigger AI if needed.
+
         Args:
-            move: The move to execute (must be legal)
+            move: The move to execute.
         """
-        # Save state for undo
+        outcome = self._controller.apply_move(self.game_state, move)
+        if outcome.illegal:
+            self.renderer.show_error(outcome.illegal.reason)
+            return
+        self._commit_outcome(outcome)
+
+    def _commit_outcome(self, outcome: MoveOutcome) -> None:
+        """Apply a successful `MoveOutcome` to session state and kick off AI.
+
+        Precondition: `outcome.applied` is not None.
+        """
         self.state_history.append(self.game_state)
-        
-        # Apply the move
-        san_notation = move_to_san(self.game_state, move)
-        self.game_state = _apply_san_move(self.game_state, san_notation, move)
-        self.status_messages = [f"Move: {san_notation}"]
-        
-        # AI move if applicable
-        if self.ai_engine and self.game_state.active_color == Color.BLACK:
-            self._do_ai_move(san_notation)
+        self.game_state = outcome.state
+        self.status_messages = [f"Move: {outcome.applied.san}"]
+
+        # AI move if applicable and game is still in progress.
+        if (
+            self.ai_engine
+            and self.game_state.active_color == Color.BLACK
+            and outcome.game_over is None
+        ):
+            self._do_ai_move(outcome.applied.san)
 
     def _do_ai_move(self, player_san: str) -> None:
         """Execute the AI's move.
-        
+
         Args:
             player_san: The player's move in SAN notation (for status message)
         """
         self.status_messages.append("AI is thinking...")
         self.renderer.render(self.game_state, status_messages=self.status_messages)
-        
+
         try:
             ai_move = self.ai_engine.select_move(self.game_state)
-            self.state_history.append(self.game_state)
-            ai_san = move_to_san(self.game_state, ai_move)
-            self.game_state = _apply_san_move(self.game_state, ai_san, ai_move)
-            self.status_messages = [
-                f"Your move: {player_san}",
-                f"AI played: {ai_san}"
-            ]
         except ValueError:
             self.status_messages = ["AI has no legal moves"]
+            return
+
+        outcome = self._controller.apply_move(self.game_state, ai_move)
+        if outcome.illegal:
+            # AI engine produced an illegal move — defensive; shouldn't happen.
+            self.status_messages = ["AI has no legal moves"]
+            return
+
+        self.state_history.append(self.game_state)
+        self.game_state = outcome.state
+        self.status_messages = [
+            f"Your move: {player_san}",
+            f"AI played: {outcome.applied.san}",
+        ]
 
     # --- Cancel handler ---
     

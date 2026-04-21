@@ -1,0 +1,38 @@
+# Local development and testing topology for PyChess networked multiplayer.
+#
+# Usage:
+#   docker compose up --build        # server on http://localhost:8080
+#   docker compose down              # stop; keeps the volume
+#   docker compose down -v           # stop and wipe the match database
+#
+# For the external-process end-to-end tests:
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up \
+#       --build --abort-on-container-exit --exit-code-from e2e
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pychess:latest
+    ports:
+      # Host port overridable via HOST_PORT env var; container port is fixed.
+      - "${HOST_PORT:-8080}:8080"
+    volumes:
+      - pychess-data:/data
+    environment:
+      # Flask session signing key. In real deploys set this from a secret.
+      SECRET_KEY: "${SECRET_KEY:-dev-only-do-not-use-in-production}"
+      PYCHESS_DB_URL: "sqlite:////data/matches.db"
+      PYCHESS_AUTO_MIGRATE: "1"
+      PYCHESS_CREATE_SCHEMA: "0"
+      # Docker runs under gunicorn + gevent-websocket, not Werkzeug.
+      PYCHESS_SOCKETIO_ASYNC_MODE: "gevent"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/match/new').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  pychess-data:

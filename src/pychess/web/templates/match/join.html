@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}PyChess · Join game {{ invite_code }}{% endblock %}
+{% block content %}
+<section class="match-join">
+    <h1>Join game</h1>
+    <p>Game code: <code>{{ invite_code }}</code></p>
+    <p>The creator is waiting to play as
+        {% if match.open_seat().value == 'black' %}White{% else %}Black{% endif %}.
+        You'll take the {{ match.open_seat().value }} seat.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('match.join_submit', invite_code=invite_code) }}">
+        <button type="submit">Claim {{ match.open_seat().value }} and play</button>
+    </form>
+</section>
+{% endblock %}

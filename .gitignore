@@ -70,3 +70,6 @@ venv.bak/
 # Project specific
 saved_games/
 *.pgn
+*.db
+*.sqlite
+*.sqlite3

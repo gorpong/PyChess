@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}PyChess · New networked game{% endblock %}
+{% block content %}
+<section class="match-new">
+    <h1>Create a networked game</h1>
+    <p>Pick which side you'd like to play. You'll get a shareable link
+       to send to your opponent after creating the game.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('match.new_submit') }}" class="match-seat-picker">
+        <fieldset>
+            <legend>Your side</legend>
+            <label><input type="radio" name="seat" value="white" checked> White</label>
+            <label><input type="radio" name="seat" value="black"> Black</label>
+            <label><input type="radio" name="seat" value="random"> Random</label>
+        </fieldset>
+        <button type="submit">Create game</button>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,31 @@
+.git
+.gitignore
+.github
+.venv
+venv
+env
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov
+coverage.xml
+.mypy_cache
+.ruff_cache
+
+# Test artifacts and local DBs
+*.db
+*.sqlite
+*.sqlite3
+*.pgn
+saved_games/
+
+# Docs we don't need in the image
+docs/
+
+# IDE
+.vscode
+.idea
+*.swp

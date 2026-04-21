@@ -1,0 +1,26 @@
+# External e2e test runner. This image intentionally does not depend on the
+# application image tag existing locally; it only needs pytest plus HTTP and
+# Socket.IO clients because the tests target the live `server` container.
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN useradd --create-home --shell /bin/bash --uid 1000 pychess \
+    && pip install --no-cache-dir \
+    --upgrade pip \
+    "pytest>=8.0.0" \
+    "requests>=2.31" \
+    "python-socketio[client]>=5.11"
+
+WORKDIR /tests
+# Copy only external-process tests. The parent tests/conftest.py imports the
+# app package, but this runner intentionally does not install PyChess; it talks
+# to the live server container over HTTP/WebSocket instead.
+COPY tests/e2e /tests/tests/e2e
+RUN chown -R pychess:pychess /tests
+
+USER pychess
+
+CMD ["pytest", "-q", "tests/e2e"]

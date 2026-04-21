@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}PyChess · Online multiplayer{% endblock %}
+{% block content %}
+<section class="match-index">
+    <h1>Play online</h1>
+    <p>Create a game and share the link with your opponent, or paste an
+       invite code you received.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="match-entry">
+        <div class="entry-card">
+            <h2>Create new game</h2>
+            <p>Pick your colour and share the link with your opponent.</p>
+            <a class="button" href="{{ url_for('match.new_form') }}">Create game</a>
+        </div>
+
+        <div class="entry-card">
+            <h2>Join with code</h2>
+            <form method="post" action="{{ url_for('match.join_by_code') }}">
+                <label>Invite code
+                    <input type="text" name="invite_code" maxlength="16"
+                           autocapitalize="characters" autocomplete="off"
+                           placeholder="ABCD1234" required>
+                </label>
+                <button type="submit">Join game</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

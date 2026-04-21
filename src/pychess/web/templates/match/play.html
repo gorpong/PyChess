@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}PyChess · Match{% endblock %}
+{% block content %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+        integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+        crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/match.js') }}" defer></script>
+<section class="match-play" data-match-id="{{ match.match_id }}" data-viewer-seat="{{ viewer_seat }}">
+    <header>
+        <h1>Networked game</h1>
+        <p class="status">
+            Status: <strong>{{ match.status.value }}</strong>
+            {% if match.result %}· Result: <strong>{{ match.result }}</strong>{% endif %}
+        </p>
+        {% if viewer_seat and match.status.value == 'active' %}
+            <p class="opponent-presence">
+                Opponent:
+                <span class="opponent-chip" data-opponent-state="unknown">
+                    <span class="dot" aria-hidden="true"></span>
+                    <span class="label">checking…</span>
+                </span>
+            </p>
+        {% endif %}
+        {% if match.status.value == 'waiting' %}
+            <p class="invite">
+                Share this link with your opponent:
+                <code>{{ url_for('match.join_form', invite_code=match.invite_code, _external=True) }}</code>
+            </p>
+        {% else %}
+            <p class="turn">
+                {% if is_your_turn %}
+                    Your turn ({{ viewer_seat }}).
+                {% elif viewer_seat %}
+                    Waiting on {{ to_move }}.
+                {% else %}
+                    Viewing as spectator — {{ to_move }} to move.
+                {% endif %}
+            </p>
+        {% endif %}
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div id="board" class="board">
+        {% for rank in rows %}
+            {% for square in rank %}
+                <div class="square {% if square.is_light %}light{% else %}dark{% endif %}{% if square.has_piece %} has-piece{% endif %}"
+                     data-square="{{ square.square }}">
+                    {% if square.piece %}
+                        <img src="{{ url_for('static', filename='images/pieces/' + square.piece + '.svg') }}"
+                             alt="{{ square.piece }}"
+                             class="piece"
+                             draggable="false">
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+
+    {% if is_your_turn %}
+        <form method="post" action="{{ url_for('match.submit_move', match_id=match.match_id) }}" class="move-form">
+            <label>From <input name="from" size="3" maxlength="2" required></label>
+            <label>To <input name="to" size="3" maxlength="2" required></label>
+            <label>Promotion
+                <select name="promotion">
+                    <option value="">—</option>
+                    <option value="Q">Queen</option>
+                    <option value="R">Rook</option>
+                    <option value="B">Bishop</option>
+                    <option value="N">Knight</option>
+                </select>
+            </label>
+            <button type="submit">Submit move</button>
+        </form>
+    {% endif %}
+
+    {% if move_pairs %}
+        <section class="history">
+            <h2>Moves</h2>
+            <ol>
+                {% for num, white_move, black_move in move_pairs %}
+                    <li>{{ white_move }}{% if black_move %} · {{ black_move }}{% endif %}</li>
+                {% endfor %}
+            </ol>
+        </section>
+    {% endif %}
+
+    {% if can_resign %}
+        <form method="post" action="{{ url_for('match.resign', match_id=match.match_id) }}" class="resign-form">
+            <button type="submit">Resign</button>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

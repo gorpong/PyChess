@@ -1,0 +1,18 @@
+# Overlay that runs the external-process e2e test suite against the main
+# server container. The test image is standalone and targets the live server
+# over HTTP and WebSocket.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up \
+#       --build --abort-on-container-exit --exit-code-from e2e
+services:
+  e2e:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    image: pychess-tests:latest
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      PYCHESS_E2E_BASE_URL: "http://server:8080"
+    command: ["pytest", "-q", "-p", "no:cacheprovider", "tests/e2e", "--tb=short"]

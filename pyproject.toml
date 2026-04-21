@@ -15,12 +15,21 @@ authors = [
 dependencies = [
     "blessed>=1.20.0",
     "flask>=3.0.0",
+    "flask-socketio>=5.3",
+    "simple-websocket>=1.0",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
+]
+server = [
+    "gunicorn>=21.2",
+    "gevent>=24.0",
+    "gevent-websocket>=0.10.1",
 ]
 
 [project.scripts]

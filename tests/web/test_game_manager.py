@@ -506,41 +506,56 @@ class TestGameManagerMoveExecution:
 
 class TestGameManagerPromotion:
     """Tests for pawn promotion."""
-    
+
+    @staticmethod
+    def _with_promotion_position(session):
+        """Configure `session` with a white pawn on e7 and kings placed safely."""
+        from pychess.model.board import Board
+        from pychess.model.piece import Color, Piece
+
+        board = Board.empty()
+        board = board.set(Square(file='e', rank=1), Piece.KING, Color.WHITE)
+        board = board.set(Square(file='a', rank=8), Piece.KING, Color.BLACK)
+        board = board.set(Square(file='e', rank=7), Piece.PAWN, Color.WHITE)
+        session.game_state = session.game_state.with_board(board)
+        return session
+
     def test_complete_promotion_to_queen(self, manager):
         """Test completing promotion to queen."""
         from pychess.rules.move import Move
-        
+
         session = manager.create_game('test', 'multiplayer')
+        session = self._with_promotion_position(session)
         session.pending_promotion = Move(
             from_square=Square(file='e', rank=7),
             to_square=Square(file='e', rank=8),
         )
-        
+
         session = manager.complete_promotion(session, 'Q')
-        
+
         assert session.pending_promotion is None
-    
+
     def test_complete_promotion_invalid_piece(self, manager):
         """Test that invalid promotion piece is rejected."""
         from pychess.rules.move import Move
-        
+
         session = manager.create_game('test', 'multiplayer')
+        session = self._with_promotion_position(session)
         session.pending_promotion = Move(
             from_square=Square(file='e', rank=7),
             to_square=Square(file='e', rank=8),
         )
-        
+
         session = manager.complete_promotion(session, 'X')
-        
+
         assert 'Invalid promotion piece' in session.status_messages[0]
-    
+
     def test_complete_promotion_no_pending(self, manager):
         """Test promotion without pending promotion."""
         session = manager.create_game('test', 'multiplayer')
-        
+
         session = manager.complete_promotion(session, 'Q')
-        
+
         assert 'No promotion pending' in session.status_messages[0]
 
 

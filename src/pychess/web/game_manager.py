@@ -10,11 +10,10 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from pychess.ai.engine import AIEngine, Difficulty
+from pychess.controller.game_controller import GameController, MoveOutcome
 from pychess.model.game_state import GameState
 from pychess.model.piece import Color, Piece
 from pychess.model.square import Square
-from pychess.notation.san import move_to_san
-from pychess.notation.pgn import _apply_san_move
 from pychess.persistence.save_manager import SaveManager, InvalidGameNameError
 from pychess.rules.move import Move
 from pychess.rules.validator import get_legal_moves, is_in_check
@@ -122,13 +121,14 @@ class GameManager:
     
     def __init__(self, max_sessions: int = 100) -> None:
         """Initialize the game manager.
-        
+
         Args:
             max_sessions: Maximum concurrent sessions before oldest is evicted.
         """
         self.max_sessions = max_sessions
         self._sessions: dict[str, WebGameSession] = {}
         self._save_manager = SaveManager()
+        self._controller = GameController()
     
     def create_session_id(self) -> str:
         """Generate a new unique session ID.
@@ -261,122 +261,128 @@ class GameManager:
         return session
     
     def _execute_move(
-        self, 
-        session: WebGameSession, 
+        self,
+        session: WebGameSession,
         matching_moves: list[Move]
     ) -> WebGameSession:
-        """Execute a move or prompt for promotion.
-        
+        """Execute a move or park it pending a promotion choice.
+
         Args:
             session: Current game session.
-            matching_moves: List of legal moves matching the from/to squares.
-                           Multiple moves indicate promotion options.
-                           
+            matching_moves: Legal moves matching the from/to squares the user
+                clicked. More than one entry means the move is a promotion
+                with multiple candidate pieces.
+
         Returns:
             Updated session after move or with promotion pending.
         """
-        # Check if this is a promotion (multiple moves = different promotion pieces)
         promotion_moves = [m for m in matching_moves if m.promotion is not None]
-        
+
         if len(promotion_moves) > 1:
-            # Need to ask for promotion piece
-            # Store the base move info and wait for piece selection
-            session.pending_promotion = matching_moves[0]  # Store any, we'll update promotion
+            # Park a pending promotion; the browser will POST the chosen piece
+            # and we'll resume via `complete_promotion`.
+            session.pending_promotion = matching_moves[0]
             session.status_messages = ['Choose a piece for promotion']
             return session
-        
-        # Single move - execute it
-        move = matching_moves[0]
-        return self._apply_move(session, move)
-    
+
+        return self._apply_move(session, matching_moves[0])
+
     def _apply_move(self, session: WebGameSession, move: Move) -> WebGameSession:
-        """Apply a move to the game state.
-        
+        """Apply a move via the shared `GameController`.
+
         Args:
             session: Current game session.
-            move: The move to apply.
-            
+            move: The move to apply (assumed already selected from legal moves).
+
         Returns:
             Updated session after move.
         """
-        # Save state for undo
+        outcome = self._controller.apply_move(session.game_state, move)
+        if outcome.illegal:
+            # Shouldn't happen in normal flow (callers filter on legal moves).
+            session.status_messages = [outcome.illegal.reason]
+            return session
+
+        self._commit_move(session, outcome)
+
+        if outcome.game_over:
+            return session
+
+        # If playing against AI and it's AI's turn, make AI move.
+        if session.ai_engine and session.game_state.turn == Color.BLACK:
+            # Set thinking message (visible if AI takes time)
+            session.status_messages = [
+                f'Your move: {outcome.applied.san}',
+                'AI is thinking...',
+            ]
+            session = self._do_ai_move(session, outcome.applied.san)
+        else:
+            session.status_messages = [f'Move: {outcome.applied.san}']
+
+        return session
+
+    def _commit_move(self, session: WebGameSession, outcome: MoveOutcome) -> None:
+        """Apply a successful controller outcome to the web session state."""
         session.state_history.append(session.game_state)
-        
-        # Generate SAN before applying move
-        san = move_to_san(session.game_state, move)
-        
-        # Apply the move
-        session.game_state = _apply_san_move(session.game_state, san, move)
-        
-        # Update last move for highlighting
-        session.last_move = (move.from_square, move.to_square)
-        
-        # Clear selection
+        session.game_state = outcome.state
+        session.last_move = (
+            outcome.applied.move.from_square,
+            outcome.applied.move.to_square,
+        )
         session.selected_square = None
         session.show_hints = False
         session.pending_promotion = None
-        
-        # Check for game end
-        result = get_game_result(session.game_state)
-        if result:
-            session.game_result = result
-            session.game_ended_during_session = True
-            session.status_messages = [f'Move: {san}', self._result_message(result)]
-            return session
 
-        # If playing against AI and it's AI's turn, make AI move
-        if session.ai_engine and session.game_state.turn == Color.BLACK:
-            # Set thinking message (visible if AI takes time)
-            session.status_messages = [f'Your move: {san}', 'AI is thinking...']
-            session = self._do_ai_move(session, san)
-        else:
-            # Set status message for multiplayer or after AI responds
-            session.status_messages = [f'Move: {san}']
-        
-        return session
-    
+        if outcome.game_over:
+            session.game_result = outcome.game_over.result
+            session.game_ended_during_session = True
+            session.status_messages = [
+                f'Move: {outcome.applied.san}',
+                self._result_message(outcome.game_over.result),
+            ]
+
     def _do_ai_move(self, session: WebGameSession, player_san: str) -> WebGameSession:
         """Execute the AI's move.
-        
+
         Args:
             session: Current game session.
-            player_san: The player's move in SAN notation for status message.
-            
+            player_san: The player's move in SAN notation (for status messages).
+
         Returns:
             Updated session after AI move.
         """
         try:
             ai_move = session.ai_engine.select_move(session.game_state)
-            
-            # Save state for undo
-            session.state_history.append(session.game_state)
-            
-            # Generate SAN and apply
-            ai_san = move_to_san(session.game_state, ai_move)
-            session.game_state = _apply_san_move(session.game_state, ai_san, ai_move)
-            
-            # Update last move
-            session.last_move = (ai_move.from_square, ai_move.to_square)
-            
-            # Check for game end
-            result = get_game_result(session.game_state)
-            if result:
-                session.game_result = result
-                session.game_ended_during_session = True
-                session.status_messages = [
-                    f'Your move: {player_san}',
-                    f'AI played: {ai_san}',
-                    self._result_message(result),
-                ]
-            else:
-                session.status_messages = [
-                    f'Your move: {player_san}',
-                    f'AI played: {ai_san}',
-                ]
-                
         except ValueError:
-            session.status_messages = [f'Your move: {player_san}', 'AI has no legal moves']
-        
+            session.status_messages = [
+                f'Your move: {player_san}',
+                'AI has no legal moves',
+            ]
+            return session
+
+        outcome = self._controller.apply_move(session.game_state, ai_move)
+        if outcome.illegal:
+            # Defensive: AI engine returned something the controller rejected.
+            session.status_messages = [
+                f'Your move: {player_san}',
+                'AI has no legal moves',
+            ]
+            return session
+
+        self._commit_move(session, outcome)
+
+        if outcome.game_over:
+            session.status_messages = [
+                f'Your move: {player_san}',
+                f'AI played: {outcome.applied.san}',
+                self._result_message(outcome.game_over.result),
+            ]
+        else:
+            session.status_messages = [
+                f'Your move: {player_san}',
+                f'AI played: {outcome.applied.san}',
+            ]
+
         return session
     
     def _result_message(self, result: str) -> str:
